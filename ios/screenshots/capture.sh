@@ -106,8 +106,12 @@ cd "$IOS_DIR"
 say "Generating the Xcode project"
 xcodegen generate >/dev/null
 
-RUNTIME="$(xcrun simctl list runtimes -j |
-  python3 -c 'import json,sys; rs=[r for r in json.load(sys.stdin)["runtimes"] if r["isAvailable"] and "iOS" in r["name"]]; print(sorted(rs, key=lambda r: r["version"])[-1]["identifier"])')"
+# The newest iOS runtime wins — unless it's a seed/beta, whose UI-automation
+# layer is what flakes mid-run (keyboard focus lost, accessibility IPC
+# timeouts). Seed builds end in a lowercase letter ("24A5355p"); a marketing
+# screenshot set wants the newest *stable* runtime. Override with RUNTIME=…
+RUNTIME="${RUNTIME:-$(xcrun simctl list runtimes -j |
+  python3 -c 'import json,sys,re; rs=[r for r in json.load(sys.stdin)["runtimes"] if r["isAvailable"] and "iOS" in r["name"]]; stable=[r for r in rs if not re.search(r"[a-z]$", r.get("buildversion") or "")] or rs; print(sorted(stable, key=lambda r: r["version"])[-1]["identifier"])')}"
 
 for device_type in $DEVICES; do
   sim_name="$SIM_NAME_PREFIX $device_type"
