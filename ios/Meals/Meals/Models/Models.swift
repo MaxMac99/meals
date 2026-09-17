@@ -17,8 +17,10 @@ enum SlotLabel {
 }
 
 // DTOs mirroring the Meals API responses (snake_case JSON decoded with
-// .convertFromSnakeCase). Timestamps stay as strings — the app never does
-// date math on them, so decoding stays robust across backends.
+// .convertFromSnakeCase). Timestamps decode as strings, so a server that
+// changes its date format can never turn a working screen into a decode
+// failure; `TimestampLabel` is the one place that turns them into Dates,
+// where something is shown or compared.
 
 struct UserProfile: Codable, Equatable, Sendable {
     let id: UUID
@@ -89,35 +91,11 @@ struct InviteCreated: Codable, Sendable {
 
     /// "2 August 2026", or nil if the timestamp isn't one we recognise — in
     /// which case the sheet says the code is single-use and leaves it there.
-    /// Month names follow the device language; locales that punctuate
-    /// abbreviations (German "Aug.") also dot the day, matching their house
-    /// style ("2. August 2026").
+    /// The words and punctuation come from the device's locale, via the
+    /// date formatter in `TimestampLabel` ("2 August 2026" at home, "2.
+    /// August 2026" in German).
     var expiryLabel: String? {
-        guard let parts = Self.dateParts(expiresAt), (1...12).contains(parts.month) else { return nil }
-        return Self.dated(
-            day: parts.day,
-            monthNames: DateFormatter().monthSymbols,
-            month: parts.month,
-            year: parts.year
-        )
-    }
-
-    // Shared reader for the ISO-8601 prefix convention above: the first ten
-    // characters as y/m/d, or nil for anything that isn't one.
-    private static func dateParts(_ timestamp: String) -> (year: Int, month: Int, day: Int)? {
-        guard timestamp.count >= 10 else { return nil }
-        let parts = timestamp.prefix(10).split(separator: "-")
-        guard parts.count == 3,
-              let year = Int(parts[0]), let month = Int(parts[1]), let day = Int(parts[2])
-        else { return nil }
-        return (year, month, day)
-    }
-    /// "2 Aug 2026" in English; localised month symbols elsewhere, with the
-    /// day dotted when the locale's own month abbreviations carry a period.
-    static func dated(day: Int, monthNames: [String], month: Int, year: Int) -> String {
-        let name = month <= monthNames.count ? monthNames[month - 1] : ""
-        let dotted = name.hasSuffix(".")
-        return dotted ? "\(day). \(name) \(year)" : "\(day) \(name) \(year)"
+        TimestampLabel.long(expiresAt)
     }
 }
 
@@ -136,11 +114,14 @@ struct InviteInfo: Codable, Identifiable, Equatable, Sendable {
         case expired
     }
 
-    /// `now` is injectable for tests; ISO-8601 timestamps compare correctly
-    /// as strings, so this stays inside the no-date-math convention.
-    func status(now: String = TimestampLabel.nowUTC()) -> Status {
+    /// `now` is injectable for tests; expiry is a real date comparison —
+    /// parsed once by `TimestampLabel`, never compared by string prefix.
+    /// An expiry the parser can't read stays open: a code the app can't
+    /// time-stamp shouldn't be told it has died.
+    func status(now: Date = .now) -> Status {
         if acceptedAt != nil { return .redeemed }
-        return String(expiresAt.prefix(19)) <= String(now.prefix(19)) ? .expired : .open
+        guard let expiry = TimestampLabel.date(expiresAt) else { return .open }
+        return expiry <= now ? .expired : .open
     }
 }
 
@@ -161,28 +142,66 @@ struct APITokenCreated: Codable, Sendable {
     let token: String
 }
 
-/// "2 Aug 2026" from an ISO timestamp — for lists of records (invites,
-/// tokens, previous shops). Reads the string prefix like `CookedHistory`
-/// does; no Date round-trip, so a backend's date format can't break a screen.
-/// Month abbreviations follow the device language (see `InviteCreated`).
+/// The one place server timestamps become Dates. Parsing is ISO-8601 via
+/// Foundation (fractional seconds, "Z" and "+00:00", plus the bare `YYYY-MM-DD`
+/// the freezer stores); anything the parser can't read comes back nil, so a
+/// format change degrades a caption, never a screen. Labels are date
+/// formatters with localized templates, which is how German gets its dotted
+/// "2. Aug. 2026" without anyone hand-rolling punctuation.
 enum TimestampLabel {
-    static func day(_ timestamp: String?) -> String? {
-        guard let timestamp, timestamp.count >= 10 else { return nil }
-        let parts = timestamp.prefix(10).split(separator: "-")
-        guard parts.count == 3, let year = Int(parts[0]), let month = Int(parts[1]), let day = Int(parts[2]),
-              (1...12).contains(month)
-        else { return nil }
-        return InviteCreated.dated(day: day, monthNames: DateFormatter().shortMonthSymbols, month: month, year: year)
+    /// Parses an ISO-8601 server timestamp into a Date. Strings without a
+    /// zone are read as UTC — the frame the server itself writes, which is
+    /// what the labels below render, so a caption says the same date wherever
+    /// in the world the app is opened.
+    static func date(_ timestamp: String?) -> Date? {
+        guard let timestamp else { return nil }
+
+        let fractional = ISO8601DateFormatter()
+        fractional.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
+        if let date = fractional.date(from: timestamp) { return date }
+
+        let plain = ISO8601DateFormatter()
+        plain.formatOptions = [.withInternetDateTime]
+        if let date = plain.date(from: timestamp) { return date }
+
+        // Zone-less forms, in the server's own frame: a full timestamp, then
+        // the one bare date `frozenOn` uses. Non-lenient by default, so a
+        // nonsense month is rejected rather than silently normalised.
+        let utc = TimeZone(identifier: "UTC")!
+        for format in ["yyyy-MM-dd'T'HH:mm:ss", "yyyy-MM-dd'T'HH:mm:ss.SSSSSS", "yyyy-MM-dd"] {
+            let formatter = DateFormatter()
+            formatter.locale = Locale(identifier: "en_US_POSIX")
+            formatter.timeZone = utc
+            formatter.dateFormat = format
+            if let date = formatter.date(from: timestamp) { return date }
+        }
+        return nil
     }
 
-    /// The current moment in the same shape the server's timestamps take, for
-    /// string comparison (expiry checks). Generated locally, never parsed.
-    static func nowUTC() -> String {
+    /// "2 Aug 2026" — abbreviated month, for lists of records (invites,
+    /// tokens, previous shops).
+    static func day(_ timestamp: String?, locale: Locale = .current) -> String? {
+        label(timestamp, template: "yMMMd", locale: locale)
+    }
+
+    /// "2 August 2026" — spelled out, for the one place a date is worth its
+    /// length (the invite expiry).
+    static func long(_ timestamp: String?, locale: Locale = .current) -> String? {
+        label(timestamp, template: "yMMMMd", locale: locale)
+    }
+
+    /// "Aug 2026" — the "last cooked" caption.
+    static func month(_ timestamp: String?, locale: Locale = .current) -> String? {
+        label(timestamp, template: "yMMM", locale: locale)
+    }
+
+    private static func label(_ timestamp: String?, template: String, locale: Locale) -> String? {
+        guard let date = date(timestamp) else { return nil }
         let formatter = DateFormatter()
-        formatter.dateFormat = "yyyy-MM-dd'T'HH:mm:ss"
+        formatter.locale = locale
         formatter.timeZone = TimeZone(identifier: "UTC")
-        formatter.locale = Locale(identifier: "en_US_POSIX")
-        return formatter.string(from: Date())
+        formatter.setLocalizedDateFormatFromTemplate(template)
+        return formatter.string(from: date)
     }
 }
 
@@ -256,17 +275,10 @@ enum CookedHistory {
         return String(localized: "\(count) \u{00B7} last \(month)")
     }
 
-    /// Timestamps stay strings app-wide (see the note above), so this reads the
-    /// ISO-8601 prefix rather than round-tripping through a formatter.
+    /// Timestamps decode as strings app-wide (see the note above), so the
+    /// month is read out of one by `TimestampLabel`'s formatter.
     static func monthLabel(_ timestamp: String?) -> String? {
-        guard let timestamp, timestamp.count >= 7 else { return nil }
-        let parts = timestamp.prefix(7).split(separator: "-")
-        guard parts.count == 2, let year = Int(parts[0]), let month = Int(parts[1]), (1...12).contains(month) else {
-            return nil
-        }
-        let names = DateFormatter().shortMonthSymbols ?? []
-        guard month <= names.count else { return nil }
-        return "\(names[month - 1]) \(year)"
+        TimestampLabel.month(timestamp)
     }
 }
 

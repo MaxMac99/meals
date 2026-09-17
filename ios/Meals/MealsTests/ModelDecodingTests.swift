@@ -4,6 +4,10 @@ import XCTest
 /// Decodes fixtures captured verbatim from the running backend (see
 /// Fixtures/), so these fail if the API contract and the app's models drift.
 final class ModelDecodingTests: XCTestCase {
+    /// Label formats are pinned to a locale so the assertions hold whatever
+    /// language the test host runs in; the app itself uses `.current`.
+    private let english = Locale(identifier: "en_GB")
+
     private func fixture(_ name: String) throws -> Data {
         let url = Bundle(for: ModelDecodingTests.self).url(forResource: name, withExtension: "json")
         return try Data(contentsOf: XCTUnwrap(url, "missing fixture \(name).json"))
@@ -190,10 +194,11 @@ final class ModelDecodingTests: XCTestCase {
             """#.utf8
         )
         let invites = try APIClient.decoder().decode([InviteInfo].self, from: json)
-        XCTAssertEqual(invites[0].status(now: "2026-07-03T10:00:00"), .open)
-        XCTAssertEqual(invites[0].status(now: "2026-07-09T10:00:00"), .expired)
-        XCTAssertEqual(invites[1].status(now: "2026-07-03T10:00:00"), .redeemed, "redeemed wins even before expiry")
-        XCTAssertEqual(invites[1].status(now: "2026-07-09T10:00:00"), .redeemed, "…and after it")
+        let then = { (s: String) in try! TimestampLabel.date(s)! }
+        XCTAssertEqual(invites[0].status(now: then("2026-07-03T10:00:00")), .open)
+        XCTAssertEqual(invites[0].status(now: then("2026-07-09T10:00:00")), .expired)
+        XCTAssertEqual(invites[1].status(now: then("2026-07-03T10:00:00")), .redeemed, "redeemed wins even before expiry")
+        XCTAssertEqual(invites[1].status(now: then("2026-07-09T10:00:00")), .redeemed, "…and after it")
     }
 
     func testDecodesAPITokens() throws {
@@ -206,7 +211,7 @@ final class ModelDecodingTests: XCTestCase {
         let tokens = try APIClient.decoder().decode([APIToken].self, from: json)
         XCTAssertEqual(tokens.first?.label, "Claude on the laptop")
         XCTAssertNil(tokens.first?.expiresAt)
-        XCTAssertEqual(TimestampLabel.day(tokens.first?.lastUsedAt), "2 Aug 2026")
+        XCTAssertEqual(TimestampLabel.day(tokens.first?.lastUsedAt, locale: english), "2 Aug 2026")
     }
 
     func testDecodesArchivedLists() throws {
@@ -218,7 +223,7 @@ final class ModelDecodingTests: XCTestCase {
         )
         let lists = try APIClient.decoder().decode([ArchivedListSummary].self, from: json)
         XCTAssertEqual(lists.first?.itemCount, 14)
-        XCTAssertEqual(TimestampLabel.day(lists.first?.archivedAt), "2 Aug 2026")
+        XCTAssertEqual(TimestampLabel.day(lists.first?.archivedAt, locale: english), "2 Aug 2026")
     }
 
     /// The plan fixture predates nothing here, but a cache written by an older
@@ -229,9 +234,16 @@ final class ModelDecodingTests: XCTestCase {
         _ = plan.archivedAt  // present or not, never a decode error
     }
 
-    func testDayLabelReadsTheIsoPrefixOnly() {
-        XCTAssertEqual(TimestampLabel.day("2026-08-02T17:00:00Z"), "2 Aug 2026")
-        XCTAssertEqual(TimestampLabel.day("2026-12-31"), "31 Dec 2026")
+    /// Dates come from Foundation now — an ISO-8601 parse behind a
+    /// localized-template formatter, never a hand-split string prefix. The
+    /// zone-less and bare-date forms the server and the freezer write are
+    /// read in UTC, so a label says the same date on any device.
+    func testLabelsComeFromADateFormatter() {
+        XCTAssertEqual(TimestampLabel.day("2026-08-02T17:00:00Z", locale: english), "2 Aug 2026")
+        XCTAssertEqual(TimestampLabel.day("2026-12-31", locale: english), "31 Dec 2026")
+        XCTAssertEqual(TimestampLabel.day("2026-12-31T23:59:59Z", locale: english), "31 Dec 2026", "rendered in UTC, not the host's clock")
+        XCTAssertEqual(TimestampLabel.long("2026-08-02T09:00:00Z", locale: english), "2 August 2026")
+        XCTAssertEqual(TimestampLabel.month("2026-01-09T12:00:00+00:00", locale: english), "Jan 2026")
         XCTAssertNil(TimestampLabel.day(nil))
         XCTAssertNil(TimestampLabel.day("soon"))
         XCTAssertNil(TimestampLabel.day("2026-13-01T00:00:00Z"), "a nonsense month is not a date")
