@@ -15,7 +15,7 @@ struct PreviousShopsView: View {
             List {
                 ForEach(lists) { list in
                     VStack(alignment: .leading, spacing: 2) {
-                        Text(TimestampLabel.day(list.archivedAt) ?? "Unknown date")
+                        Text(TimestampLabel.day(list.archivedAt) ?? String(localized: "Unknown date"))
                         Text(started(list))
                             .font(.caption)
                             .foregroundStyle(.secondary)
@@ -48,9 +48,11 @@ struct PreviousShopsView: View {
     }
 
     private func started(_ list: ArchivedListSummary) -> String {
-        let items = "\(list.itemCount) item\(list.itemCount == 1 ? "" : "s")"
+        let items = list.itemCount == 1
+            ? String(localized: "1 item")
+            : String(localized: "\(list.itemCount) items")
         guard let started = TimestampLabel.day(list.createdAt) else { return items }
-        return "started \(started) · \(items)"
+        return String(localized: "started \(started) · \(items)")
     }
 
     private func load() async {

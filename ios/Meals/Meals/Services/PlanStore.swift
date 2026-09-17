@@ -39,7 +39,7 @@ final class PlanStore {
             // Keep serving the cached plan; don't claim anything was saved —
             // only the shopping list can honestly promise a sync.
             isOffline = true
-            if plan == nil { errorMessage = "You're offline and there's no saved copy of the plan yet." }
+            if plan == nil { errorMessage = String(localized: "You're offline and there's no saved copy of the plan yet.") }
         } catch APIError.server(404, _) {
             plan = nil  // no active plan yet
             isOffline = false
@@ -116,7 +116,7 @@ final class PlanStore {
 
     /// The label a plan gets when one is started implicitly. Same default
     /// `NewPlanSheet` offers, so both routes into a first plan agree.
-    nonisolated static let implicitPlanLabel = "This week's options"
+    nonisolated static let implicitPlanLabel = String(localized: "This week's options")
 
     /// Add a meal to the plan, starting a plan first if the household hasn't
     /// got one. Returns false when nothing landed, with `errorMessage` set:
@@ -399,8 +399,8 @@ final class RecipeStore {
         guard !users.isEmpty else { return nil }
         let list = users.joined(separator: ", ")
         return users.count == 1
-            ? "'\(list)' still uses this recipe. Remove it from that meal first, then delete the recipe."
-            : "These meals still use this recipe: \(list). Remove it from them first, then delete the recipe."
+            ? String(localized: "'\(list)' still uses this recipe. Remove it from that meal first, then delete the recipe.")
+            : String(localized: "These meals still use this recipe: \(list). Remove it from them first, then delete the recipe.")
     }
 
     func ingest(url: String) async throws -> IngestResponse {

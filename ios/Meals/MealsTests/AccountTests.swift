@@ -119,13 +119,17 @@ final class AccountTests: XCTestCase {
             """
         )
         XCTAssertEqual(invite.code, "K7QM-2XPD")
-        XCTAssertEqual(invite.expiryLabel, "2 August 2026")
+        XCTAssertEqual(invite.expiryLabel, TimestampLabel.long(invite.expiresAt))
+        XCTAssertEqual(
+            TimestampLabel.long("2026-08-02T09:00:00Z", locale: Locale(identifier: "en_GB")),
+            "2 August 2026"
+        )
     }
 
     func testAnUnreadableExpiryIsNotAnError() throws {
-        // Timestamps stay strings app-wide precisely so a server that changes
-        // its date format can't turn a working screen into a decode failure —
-        // the sheet just drops the expiry sentence.
+        // The decode keeps timestamps as strings so a server that changes its
+        // date format can't turn a working screen into a decode failure; the
+        // parser just declines, and the sheet drops the expiry sentence.
         let invite = try decode(
             InviteCreated.self,
             """

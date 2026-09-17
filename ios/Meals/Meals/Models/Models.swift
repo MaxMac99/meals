@@ -1,8 +1,26 @@
 import Foundation
 
+/// Server slot vocabulary (dinner/lunch/breakfast/other) shown as a section
+/// header or a caption. Deliberately a helper and not a String extension: an
+/// API vocabulary shouldn't hang off every string in the app. The raw value
+/// stays what is sent to the API.
+enum SlotLabel {
+    static func label(for slot: String) -> String {
+        switch slot {
+        case "dinner": String(localized: "dinner-slot")
+        case "lunch": String(localized: "lunch-slot")
+        case "breakfast": String(localized: "breakfast-slot")
+        case "other": String(localized: "other-slot")
+        default: slot.capitalized
+        }
+    }
+}
+
 // DTOs mirroring the Meals API responses (snake_case JSON decoded with
-// .convertFromSnakeCase). Timestamps stay as strings — the app never does
-// date math on them, so decoding stays robust across backends.
+// .convertFromSnakeCase). Timestamps decode as strings, so a server that
+// changes its date format can never turn a working screen into a decode
+// failure; `TimestampLabel` is the one place that turns them into Dates,
+// where something is shown or compared.
 
 struct UserProfile: Codable, Equatable, Sendable {
     let id: UUID
@@ -73,17 +91,11 @@ struct InviteCreated: Codable, Sendable {
 
     /// "2 August 2026", or nil if the timestamp isn't one we recognise — in
     /// which case the sheet says the code is single-use and leaves it there.
+    /// The words and punctuation come from the device's locale, via the
+    /// date formatter in `TimestampLabel` ("2 August 2026" at home, "2.
+    /// August 2026" in German).
     var expiryLabel: String? {
-        guard expiresAt.count >= 10 else { return nil }
-        let parts = expiresAt.prefix(10).split(separator: "-")
-        guard parts.count == 3, let year = Int(parts[0]), let month = Int(parts[1]), let day = Int(parts[2]),
-              (1...12).contains(month)
-        else { return nil }
-        let names = [
-            "January", "February", "March", "April", "May", "June",
-            "July", "August", "September", "October", "November", "December",
-        ]
-        return "\(day) \(names[month - 1]) \(year)"
+        TimestampLabel.long(expiresAt)
     }
 }
 
@@ -102,11 +114,14 @@ struct InviteInfo: Codable, Identifiable, Equatable, Sendable {
         case expired
     }
 
-    /// `now` is injectable for tests; ISO-8601 timestamps compare correctly
-    /// as strings, so this stays inside the no-date-math convention.
-    func status(now: String = TimestampLabel.nowUTC()) -> Status {
+    /// `now` is injectable for tests; expiry is a real date comparison —
+    /// parsed once by `TimestampLabel`, never compared by string prefix.
+    /// An expiry the parser can't read stays open: a code the app can't
+    /// time-stamp shouldn't be told it has died.
+    func status(now: Date = .now) -> Status {
         if acceptedAt != nil { return .redeemed }
-        return String(expiresAt.prefix(19)) <= String(now.prefix(19)) ? .expired : .open
+        guard let expiry = TimestampLabel.date(expiresAt) else { return .open }
+        return expiry <= now ? .expired : .open
     }
 }
 
@@ -127,28 +142,66 @@ struct APITokenCreated: Codable, Sendable {
     let token: String
 }
 
-/// "2 Aug 2026" from an ISO timestamp — for lists of records (invites,
-/// tokens, previous shops). Reads the string prefix like `CookedHistory`
-/// does; no Date round-trip, so a backend's date format can't break a screen.
+/// The one place server timestamps become Dates. Parsing is ISO-8601 via
+/// Foundation (fractional seconds, "Z" and "+00:00", plus the bare `YYYY-MM-DD`
+/// the freezer stores); anything the parser can't read comes back nil, so a
+/// format change degrades a caption, never a screen. Labels are date
+/// formatters with localized templates, which is how German gets its dotted
+/// "2. Aug. 2026" without anyone hand-rolling punctuation.
 enum TimestampLabel {
-    static func day(_ timestamp: String?) -> String? {
-        guard let timestamp, timestamp.count >= 10 else { return nil }
-        let parts = timestamp.prefix(10).split(separator: "-")
-        guard parts.count == 3, let year = Int(parts[0]), let month = Int(parts[1]), let day = Int(parts[2]),
-              (1...12).contains(month)
-        else { return nil }
-        let names = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"]
-        return "\(day) \(names[month - 1]) \(year)"
+    /// Parses an ISO-8601 server timestamp into a Date. Strings without a
+    /// zone are read as UTC — the frame the server itself writes, which is
+    /// what the labels below render, so a caption says the same date wherever
+    /// in the world the app is opened.
+    static func date(_ timestamp: String?) -> Date? {
+        guard let timestamp else { return nil }
+
+        let fractional = ISO8601DateFormatter()
+        fractional.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
+        if let date = fractional.date(from: timestamp) { return date }
+
+        let plain = ISO8601DateFormatter()
+        plain.formatOptions = [.withInternetDateTime]
+        if let date = plain.date(from: timestamp) { return date }
+
+        // Zone-less forms, in the server's own frame: a full timestamp, then
+        // the one bare date `frozenOn` uses. Non-lenient by default, so a
+        // nonsense month is rejected rather than silently normalised.
+        let utc = TimeZone(identifier: "UTC")!
+        for format in ["yyyy-MM-dd'T'HH:mm:ss", "yyyy-MM-dd'T'HH:mm:ss.SSSSSS", "yyyy-MM-dd"] {
+            let formatter = DateFormatter()
+            formatter.locale = Locale(identifier: "en_US_POSIX")
+            formatter.timeZone = utc
+            formatter.dateFormat = format
+            if let date = formatter.date(from: timestamp) { return date }
+        }
+        return nil
     }
 
-    /// The current moment in the same shape the server's timestamps take, for
-    /// string comparison (expiry checks). Generated locally, never parsed.
-    static func nowUTC() -> String {
+    /// "2 Aug 2026" — abbreviated month, for lists of records (invites,
+    /// tokens, previous shops).
+    static func day(_ timestamp: String?, locale: Locale = .current) -> String? {
+        label(timestamp, template: "yMMMd", locale: locale)
+    }
+
+    /// "2 August 2026" — spelled out, for the one place a date is worth its
+    /// length (the invite expiry).
+    static func long(_ timestamp: String?, locale: Locale = .current) -> String? {
+        label(timestamp, template: "yMMMMd", locale: locale)
+    }
+
+    /// "Aug 2026" — the "last cooked" caption.
+    static func month(_ timestamp: String?, locale: Locale = .current) -> String? {
+        label(timestamp, template: "yMMM", locale: locale)
+    }
+
+    private static func label(_ timestamp: String?, template: String, locale: Locale) -> String? {
+        guard let date = date(timestamp) else { return nil }
         let formatter = DateFormatter()
-        formatter.dateFormat = "yyyy-MM-dd'T'HH:mm:ss"
+        formatter.locale = locale
         formatter.timeZone = TimeZone(identifier: "UTC")
-        formatter.locale = Locale(identifier: "en_US_POSIX")
-        return formatter.string(from: Date())
+        formatter.setLocalizedDateFormatFromTemplate(template)
+        return formatter.string(from: date)
     }
 }
 
@@ -164,9 +217,11 @@ struct AccountDeleted: Codable, Sendable {
     let detail: String
 }
 
-/// What the server expects of native clients (GET /client-config). Builds below
-/// `minIosBuild` are refused with 426 on everything except the offline-queue
-/// endpoints; builds below `currentIosBuild` just get a nudge.
+/// What the server expects of native clients (GET /client-config). Builds
+/// below `minIosBuild` are refused with 426 on everything except the
+/// offline-queue endpoints — that hard block is the only upgrade surface left;
+/// the soft banner that used `currentIosBuild` was removed as noise and
+/// nothing reads it any more.
 struct ClientConfig: Codable, Equatable, Sendable {
     let apiVersion: String
     let minIosBuild: Int
@@ -217,21 +272,15 @@ struct RecipeSummary: Codable, Identifiable, Equatable, Sendable {
 enum CookedHistory {
     static func summary(times: Int?, lastCookedAt: String?) -> String? {
         guard let times, times > 0 else { return nil }
-        let count = "cooked \(times)×"
+        let count = String(localized: "cooked \(times)\u{00D7}")
         guard let month = monthLabel(lastCookedAt) else { return count }
-        return "\(count) · last \(month)"
+        return String(localized: "\(count) \u{00B7} last \(month)")
     }
 
-    /// Timestamps stay strings app-wide (see the note above), so this reads the
-    /// ISO-8601 prefix rather than round-tripping through a formatter.
+    /// Timestamps decode as strings app-wide (see the note above), so the
+    /// month is read out of one by `TimestampLabel`'s formatter.
     static func monthLabel(_ timestamp: String?) -> String? {
-        guard let timestamp, timestamp.count >= 7 else { return nil }
-        let parts = timestamp.prefix(7).split(separator: "-")
-        guard parts.count == 2, let year = Int(parts[0]), let month = Int(parts[1]), (1...12).contains(month) else {
-            return nil
-        }
-        let names = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"]
-        return "\(names[month - 1]) \(year)"
+        TimestampLabel.month(timestamp)
     }
 }
 
@@ -252,17 +301,17 @@ enum ValueTier: String, CaseIterable, Identifiable, Sendable {
 
     var label: String {
         switch self {
-        case .premium: "Worth paying up for"
-        case .budget: "Own-brand is fine"
-        case .any: "No strong opinion"
+        case .premium: String(localized: "Worth paying up for")
+        case .budget: String(localized: "Own-brand is fine")
+        case .any: String(localized: "No strong opinion")
         }
     }
 
     var short: String {
         switch self {
-        case .premium: "Premium"
-        case .budget: "Budget"
-        case .any: "No opinion"
+        case .premium: String(localized: "Premium")
+        case .budget: String(localized: "Budget")
+        case .any: String(localized: "No opinion")
         }
     }
 
@@ -434,7 +483,11 @@ struct FreezerItem: Codable, Identifiable, Equatable, Sendable {
     /// A bare date, `YYYY-MM-DD`.
     let frozenOn: String
 
-    var portionsText: String { "\(portions) portion\(portions == 1 ? "" : "s")" }
+    var portionsText: String {
+        portions == 1
+            ? String(localized: "1 portion")
+            : String(localized: "\(portions) portions")
+    }
 
     var frozenOnDate: Date? {
         let formatter = DateFormatter()
@@ -445,13 +498,14 @@ struct FreezerItem: Codable, Identifiable, Equatable, Sendable {
         return formatter.date(from: frozenOn)
     }
 
-    /// "frozen 3 weeks ago" — the age is the point of the row.
+    /// "frozen 3 weeks ago" — the age is the point of the row. The relative
+    /// formatter speaks the device language; only the "frozen" frame is ours.
     var frozenText: String {
-        guard let date = frozenOnDate else { return "frozen \(frozenOn)" }
-        if Calendar.current.isDateInToday(date) { return "frozen today" }
+        guard let date = frozenOnDate else { return String(localized: "frozen \(frozenOn)") }
+        if Calendar.current.isDateInToday(date) { return String(localized: "frozen today") }
         let formatter = RelativeDateTimeFormatter()
         formatter.unitsStyle = .full
-        return "frozen \(formatter.localizedString(for: date, relativeTo: .now))"
+        return String(localized: "frozen \(formatter.localizedString(for: date, relativeTo: .now))")
     }
 }
 

@@ -52,7 +52,7 @@ final class ScreenshotTests: XCTestCase {
         // matches it from any screen, which is how this shot once shipped as a
         // second copy of the plan. A seeded row is proof the list rendered.
         tab("Shopping")
-        waitForText("carrot")
+        waitForText("Carrot")
         tickOffAFew()
         capture("02-shopping-list")
 
@@ -77,11 +77,19 @@ final class ScreenshotTests: XCTestCase {
         // happened to answer on the same port. Check before the shutter.
         // Matched loosely on purpose: SwiftUI's LabeledContent folds its label
         // and value into one accessibility element, so an exact staticTexts
-        // lookup for the URL finds nothing even when it's on screen.
+        // lookup for the URL finds nothing even when it's on screen. And the
+        // list is lazy — the Server row sits below the fold, so it isn't in
+        // the accessibility tree at all until we scroll down to it. Walk down
+        // until the URL is in the tree, then take the shot showing it.
         let showsServer = app.descendants(matching: .any)
             .matching(NSPredicate(format: "label CONTAINS %@ OR value CONTAINS %@", serverURL, serverURL))
-        XCTAssertGreaterThan(
-            showsServer.count, 0,
+        var swipes = 0
+        while !showsServer.firstMatch.exists && swipes < 6 {
+            app.swipeUp()
+            swipes += 1
+        }
+        XCTAssertTrue(
+            showsServer.firstMatch.exists,
             "Settings doesn't show \(serverURL) — the app is talking to something else, "
                 + "and these screenshots could contain real data. Refusing to publish them."
         )
@@ -99,12 +107,10 @@ final class ScreenshotTests: XCTestCase {
             // script erases the device, so this means the app didn't start.
             throw XCTSkip("the sign-in screen never appeared; is the app running?")
         }
-        email.tap()
-        email.typeText(environment("SCREENSHOT_EMAIL", default: "demo@example.com"))
+        focusAndType(email, environment("SCREENSHOT_EMAIL", default: "demo@example.com"))
 
         let password = app.secureTextFields["Password"]
-        password.tap()
-        password.typeText(environment("SCREENSHOT_PASSWORD", default: "demo-password-123"))
+        focusAndType(password, environment("SCREENSHOT_PASSWORD", default: "demo-password-123"))
 
         app.buttons["Log in"].tap()
 
@@ -114,12 +120,29 @@ final class ScreenshotTests: XCTestCase {
         )
     }
 
+    /// Taps until the field actually holds keyboard focus (the software
+    /// keyboard is up), then types. On a freshly created simulator a system
+    /// notification banner ("Apple Intelligence", keyboard setup …) can sit
+    /// over the email field and swallow the first tap; the second lands.
+    /// Retrying here turns that one-time banner from a flaky failure into a
+    /// brief pause.
+    private func focusAndType(_ field: XCUIElement, _ text: String) {
+        let deadline = Date().addingTimeInterval(10)
+        repeat {
+            field.tap()
+            if app.keyboards.firstMatch.exists { break }
+            Thread.sleep(forTimeInterval: 0.5)
+        } while Date() < deadline
+        field.typeText(text)
+    }
+
     /// Tick a couple of things off, so the list looks like a shop in progress
     /// rather than a fresh export.
     private func tickOffAFew() {
         // Items from the first aisle, so the progress is visible in the part of
-        // the list the screenshot actually shows.
-        for name in ["broccoli", "carrot"] {
+        // the list the screenshot actually shows. Ingredient names are shown
+        // sentence-cased (server truth stays lowercase), so match the display.
+        for name in ["Broccoli", "Carrot"] {
             let row = app.buttons.containing(.staticText, identifier: name).firstMatch
             if row.exists && row.isHittable { row.tap() }
         }

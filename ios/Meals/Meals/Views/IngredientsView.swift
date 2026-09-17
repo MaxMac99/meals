@@ -152,7 +152,7 @@ struct IngredientsView: View {
         case .aisle:
             return grouped { "\($0.aisle) \($0.aisleLabel)" }
         case .valueTier:
-            return grouped { $0.tier == .any ? "No opinion" : "\($0.tier.badge) \($0.tier.short)" }
+            return grouped { $0.tier == .any ? String(localized: "No opinion") : "\($0.tier.badge) \($0.tier.short)" }
         }
     }
 
@@ -234,7 +234,7 @@ struct IngredientsView: View {
 /// aisle/staple/verdict survives (the keeper's) and whose is lost.
 private func ingredientMeta(_ item: IngredientInfo) -> String {
     var parts = ["\(item.aisle) \(item.aisleLabel)"]
-    if item.isStaple { parts.append("staple") }
+    if item.isStaple { parts.append(String(localized: "staple")) }
     if item.tier != .any { parts.append("\(item.tier.badge) \(item.tier.short.lowercased())") }
     if let note = item.valueNote, !note.isEmpty { parts.append("\u{201C}\(note)\u{201D}") }
     return parts.joined(separator: " · ")
@@ -265,8 +265,7 @@ struct DuplicatesView: View {
                             "Catalogue is clean",
                             systemImage: "sparkles",
                             description: Text(
-                                "No duplicate names found. Spotted a pair this can't see, like "
-                                    + "'beef mince' and 'minced beef'? Open the ingredient and merge it from there."
+                                "No duplicate names found. Spotted a pair this can't see, like 'beef mince' and 'minced beef'? Open the ingredient and merge it from there."
                             )
                         )
                     }
@@ -351,8 +350,7 @@ struct DuplicatesView: View {
         } footer: {
             if keeper.name != group.canonicalName {
                 Text(
-                    "New recipes file this food under '\(group.canonicalName)', "
-                        + "so a separate '\(group.canonicalName)' can creep back."
+                    String(localized: "New recipes file this food under '\(group.canonicalName)', so a separate '\(group.canonicalName)' can creep back.")
                 )
             } else {
                 Text("The survivor keeps its own aisle, staple flag and verdict.")
@@ -381,8 +379,7 @@ struct DuplicatesView: View {
             Text("Old spellings")
         } footer: {
             Text(
-                "Stored under a name a new recipe wouldn't use, with nothing to merge into. "
-                    + "Filing one moves it to the modern name, keeping its aisle, staple flag and verdict."
+                String(localized: "Stored under a name a new recipe wouldn't use, with nothing to merge into. Filing one moves it to the modern name, keeping its aisle, staple flag and verdict.")
             )
         }
     }
@@ -458,9 +455,7 @@ struct MergeIntoSheet: View {
             List {
                 Section {
                     Text(
-                        "Everything pointing at '\(source.name)' moves onto the ingredient you pick, "
-                            + "then '\(source.name)' is deleted. Not reversible — merge spellings of the "
-                            + "same food, not things bought together."
+                        String(localized: "Everything pointing at '\(source.name)' moves onto the ingredient you pick, then '\(source.name)' is deleted. Not reversible — merge spellings of the same food, not things bought together.")
                     )
                     .font(.callout)
                     .foregroundStyle(.secondary)
@@ -491,7 +486,7 @@ struct MergeIntoSheet: View {
                     }
                 }
             }
-            .navigationTitle("Merge '\(source.name)' into…")
+            .navigationTitle(String(localized: "Merge '\(source.name)' into…"))
             .navigationBarTitleDisplayMode(.inline)
             .searchable(text: $search, prompt: "Search ingredients")
             .toolbar {
@@ -502,7 +497,7 @@ struct MergeIntoSheet: View {
             .task { await load() }
             .onChange(of: search) { _, _ in Task { await load() } }
             .confirmationDialog(
-                "Merge '\(source.name)' into '\(pendingTarget?.name ?? "")'? This can't be undone.",
+                String(localized: "Merge '\(source.name)' into '\(pendingTarget?.name ?? "")'? This can't be undone."),
                 isPresented: .init(get: { pendingTarget != nil }, set: { if !$0 { pendingTarget = nil } }),
                 titleVisibility: .visible
             ) {

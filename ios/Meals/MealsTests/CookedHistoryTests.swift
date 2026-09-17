@@ -1,8 +1,8 @@
 import XCTest
 @testable import Meals
 
-/// The "cooked 12×" phrasing (issue #13). Timestamps stay strings app-wide, so
-/// the month label is parsed from the ISO-8601 prefix.
+/// The "cooked 12×" phrasing (issue #13). Timestamps decode as strings, and
+/// `TimestampLabel` turns them into Dates with Foundation's formatters.
 final class CookedHistoryTests: XCTestCase {
     func testNeverCookedSaysNothing() {
         XCTAssertNil(CookedHistory.summary(times: 0, lastCookedAt: nil))

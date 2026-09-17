@@ -2,7 +2,7 @@
 
 import uuid
 
-from sqlalchemy import select
+from sqlalchemy import and_, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app import limits
@@ -17,9 +17,11 @@ from app.services.recipe_parser import ParsedRecipe
 async def get_or_create_ingredient(
     db: AsyncSession, household_id: uuid.UUID, name: str, *, count_against_limits: bool = True
 ) -> Ingredient:
-    """Ingredient names are the canonical key: 'chopped tomatoes' from two
-    recipes resolves to one ingredient. New ingredients get a best-effort
-    aisle from the built-in lookup table.
+    """Ingredient identities fold to one canonical key: 'chopped tomatoes'
+    from two recipes resolve to one ingredient. What is *stored* is the name
+    as it was written — 'Käse' stays 'Käse' — and the fold decides only which
+    row a write lands on. New ingredients get a best-effort aisle from the
+    built-in lookup table.
 
     Every write path — JSON-LD ingest, an AI's POST /recipes, a loose meal
     ingredient, an ad-hoc list add — lands here, which is why the name folding
@@ -36,13 +38,31 @@ async def get_or_create_ingredient(
     # ingredient is bad data, an unnamed one breaks every client that shows it.
     canonical = canonical_ingredient_name(name) or " ".join(name.lower().split())
     result = await db.execute(
-        select(Ingredient).where(Ingredient.household_id == household_id, Ingredient.name == canonical)
+        select(Ingredient)
+        .where(
+            Ingredient.household_id == household_id,
+            # Rows written before the key column existed have it null; their
+            # name *is* the fold result, so the fallback keeps them findable.
+            or_(
+                Ingredient.canonical_name == canonical,
+                and_(Ingredient.canonical_name.is_(None), Ingredient.name == canonical),
+            ),
+        )
+        .order_by(Ingredient.canonical_name.is_(None), Ingredient.created_at)
+        .limit(1)
     )
-    ingredient = result.scalar_one_or_none()
+    ingredient = result.scalars().first()
     if ingredient is None:
         if count_against_limits:
             await limits.enforce(db, household_id, "ingredients")
-        ingredient = Ingredient(household_id=household_id, name=canonical, aisle=guess_aisle(canonical))
+        ingredient = Ingredient(
+            household_id=household_id,
+            # What shows everywhere is the household's own spelling, not the
+            # fold — the fold is the key, never the display (Q21).
+            name=" ".join(name.split()) or canonical,
+            canonical_name=canonical,
+            aisle=guess_aisle(canonical),
+        )
         db.add(ingredient)
         await db.flush()
     return ingredient

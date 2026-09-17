@@ -1,9 +1,15 @@
 """Ingredient-name canonicalisation (decision Q21).
 
-The ingredient *name* is the identity key (one row per household per name), so
-two recipes describing the same food differently produce two ingredients and
-two shopping-list lines: "mint" and "mint leaves", "garlic" and "garlic
-cloves", "onion" and "onions".
+The fold is the *identity key* a write resolves to, never the display: the
+name is stored the way the household wrote it ("Käse" stays "Käse") and the
+folded form lives alongside it (`ingredients.canonical_name`), so "mint" and
+"mint leaves" are one ingredient while the shelf still reads the spelling
+somebody actually used.
+
+The ingredient *name* used to be the identity key itself, so two recipes
+describing the same food differently produced two ingredients and two
+shopping-list lines: "mint" and "mint leaves", "garlic" and "garlic cloves",
+"onion" and "onions".
 
 This module folds the mechanical differences away before the name is used as a
 key. It is deliberately in the same spirit as `aisles.py` (decision Q13): a

@@ -25,9 +25,7 @@ struct InvitesView: View {
                 }
             } footer: {
                 Text(
-                    "Invite codes are single-use and expire; send one like you'd send a "
-                        + "password. Issuing and revoking them is the household lead's (Q23), "
-                        + "but everyone can see who could still walk in."
+                    String(localized: "Invite codes are single-use and expire; send one like you'd send a password. Issuing and revoking them is the household lead's (Q23), but everyone can see who could still walk in.")
                 )
             }
 
@@ -104,14 +102,14 @@ struct InvitesView: View {
 
     private func detailLine(_ invite: InviteInfo, status: InviteInfo.Status) -> String {
         var parts: [String] = []
-        if let created = TimestampLabel.day(invite.createdAt) { parts.append("created \(created)") }
+        if let created = TimestampLabel.day(invite.createdAt) { parts.append(String(localized: "created \(created)")) }
         switch status {
         case .open:
-            if let expires = TimestampLabel.day(invite.expiresAt) { parts.append("expires \(expires)") }
+            if let expires = TimestampLabel.day(invite.expiresAt) { parts.append(String(localized: "expires \(expires)")) }
         case .redeemed:
-            if let redeemed = TimestampLabel.day(invite.acceptedAt) { parts.append("redeemed \(redeemed)") }
+            if let redeemed = TimestampLabel.day(invite.acceptedAt) { parts.append(String(localized: "redeemed \(redeemed)")) }
         case .expired:
-            if let expired = TimestampLabel.day(invite.expiresAt) { parts.append("expired \(expired)") }
+            if let expired = TimestampLabel.day(invite.expiresAt) { parts.append(String(localized: "expired \(expired)")) }
         }
         return parts.joined(separator: " · ")
     }

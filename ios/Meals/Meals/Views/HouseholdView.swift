@@ -23,7 +23,7 @@ struct HouseholdView: View {
 
     private var youLead: Bool { session.user?.leadsHousehold ?? false }
     private var leadName: String {
-        household?.members.first(where: { $0.isLead })?.displayName ?? "whoever leads it"
+        household?.members.first(where: { $0.isLead })?.displayName ?? String(localized: "whoever leads it")
     }
 
     var body: some View {
@@ -80,10 +80,8 @@ struct HouseholdView: View {
         } footer: {
             Text(
                 youLead
-                    ? "Everyone here shares the recipes, plan and shopping list, and can change all of it. "
-                        + "You lead this household, so inviting and removing people is yours."
-                    : "Everyone here shares the recipes, plan and shopping list, and can change all of it. "
-                        + "\(leadName) leads this household, so inviting and removing people is theirs."
+                    ? String(localized: "Everyone here shares the recipes, plan and shopping list, and can change all of it. You lead this household, so inviting and removing people is yours.")
+                    : String(localized: "Everyone here shares the recipes, plan and shopping list, and can change all of it. \(leadName) leads this household, so inviting and removing people is theirs.")
             )
         }
     }
@@ -93,7 +91,7 @@ struct HouseholdView: View {
         let you = member.id == session.user?.id
         VStack(alignment: .leading, spacing: 2) {
             HStack(spacing: 6) {
-                Text(you ? "\(member.displayName) (you)" : member.displayName)
+                Text(you ? String(localized: "\(member.displayName) (you)") : member.displayName)
                 if member.isLead {
                     Text("Lead")
                         .font(.caption2.weight(.semibold))
@@ -142,10 +140,8 @@ struct HouseholdView: View {
         } footer: {
             Text(
                 youLead
-                    ? "Handing over gives them the invites and the guest list; you stay a member and can "
-                        + "leave afterwards if you want to."
-                    : "An invite code from another household moves this account into it. You keep your "
-                        + "account and everything signed in on it."
+                    ? String(localized: "Handing over gives them the invites and the guest list; you stay a member and can leave afterwards if you want to.")
+                    : String(localized: "An invite code from another household moves this account into it. You keep your account and everything signed in on it.")
             )
         }
     }
@@ -153,11 +149,9 @@ struct HouseholdView: View {
     private var removalPrompt: String {
         guard let member = pendingRemoval else { return "" }
         if member.id == session.user?.id {
-            return "Leave this household? You keep your account and your tokens, and land in an empty "
-                + "household of your own. The recipes, plan and history stay here."
+            return String(localized: "Leave this household? You keep your account and your tokens, and land in an empty household of your own. The recipes, plan and history stay here.")
         }
-        return "Remove \(member.displayName)? They keep their account and land in an empty household of "
-            + "their own. Everything they added here stays."
+        return String(localized: "Remove \(member.displayName)? They keep their account and land in an empty household of their own. Everything they added here stays.")
     }
 
     private func refresh() async {
@@ -170,7 +164,7 @@ struct HouseholdView: View {
             // rather than showing its 404 text, which is about a missing route
             // and means nothing to the person reading it.
             loaded = true
-            errorMessage = "This server is too old to list who's in your household. Update the server to see it here."
+            errorMessage = String(localized: "This server is too old to list who's in your household. Update the server to see it here.")
         } catch {
             loaded = true
             errorMessage = error.localizedDescription
@@ -288,8 +282,7 @@ private struct HandOverLeadSheet: View {
                     }
                 } footer: {
                     Text(
-                        "They get the invites and the guest list. You become an ordinary member — still "
-                            + "able to change every recipe, plan and list, as everyone here is."
+                        String(localized: "They get the invites and the guest list. You become an ordinary member — still able to change every recipe, plan and list, as everyone here is.")
                     )
                 }
                 if let errorMessage {
@@ -352,9 +345,7 @@ private struct JoinHouseholdSheet: View {
                         .font(.callout.monospaced())
                 } footer: {
                     Text(
-                        "You keep this account and everything signed in on it — only which household "
-                            + "you're in changes. “\(currentName)” keeps its recipes unless you're its "
-                            + "only member, in which case they go with you."
+                        String(localized: "You keep this account and everything signed in on it — only which household you're in changes. “\(currentName)” keeps its recipes unless you're its only member, in which case they go with you.")
                     )
                 }
                 if let errorMessage {

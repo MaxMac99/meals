@@ -3,7 +3,7 @@ from typing import Literal
 
 from fastapi import APIRouter, HTTPException, Query, status
 from pydantic import BaseModel, Field
-from sqlalchemy import case, func, select
+from sqlalchemy import and_, case, func, or_, select
 
 from app.deps import CurrentUser, DbSession
 from app.models import Ingredient, ListItem, MealIngredient, RecipeIngredient
@@ -42,18 +42,19 @@ class IngredientCreate(BaseModel):
 
 def _sort_order(sort: str, aisle_order: dict[str, int] | None = None) -> tuple:
     """Name is always the tiebreak so ordering is stable across requests.
+    Lower-cased, so a display name's capital doesn't file it under Z.
 
     `aisle_order` overrides the built-in walk for sort=aisle — the caller
     passes the active supermarket's order so this stays "the same walk the
     shopping list uses" for households that saved one."""
     if sort == "aisle":
         order = AISLE_ORDER if aisle_order is None else aisle_order
-        return (case(order, value=Ingredient.aisle, else_=len(order)), Ingredient.name)
+        return (case(order, value=Ingredient.aisle, else_=len(order)), func.lower(Ingredient.name))
     if sort == "value_tier":
         # VALUE_TIERS is already premium → budget → any: opinions first, unrated last.
         tier_order = {tier: index for index, tier in enumerate(VALUE_TIER_NAMES)}
-        return (case(tier_order, value=Ingredient.value_tier, else_=len(tier_order)), Ingredient.name)
-    return (Ingredient.name,)
+        return (case(tier_order, value=Ingredient.value_tier, else_=len(tier_order)), func.lower(Ingredient.name))
+    return (func.lower(Ingredient.name),)
 
 
 @router.get("/aisles", response_model=list[AisleOut])
@@ -112,7 +113,13 @@ async def list_ingredients(
     if search:
         query = query.where(Ingredient.name.ilike(f"%{search.lower()}%"))
     if name is not None:
-        query = query.where(Ingredient.name == canonical_ingredient_name(name))
+        key = canonical_ingredient_name(name)
+        query = query.where(
+            or_(
+                Ingredient.canonical_name == key,
+                and_(Ingredient.canonical_name.is_(None), Ingredient.name == key),
+            )
+        )
     if staples_only:
         query = query.where(Ingredient.is_staple == True)  # noqa: E712
     if value_tier is not None:
@@ -151,15 +158,17 @@ async def list_duplicate_ingredients(user: CurrentUser, db: DbSession) -> Duplic
     """Ingredients in this household that are the same food under two names —
     "mint" and "mint leaves", "garlic" and "garlic cloves".
 
-    New writes are folded to one name automatically, so what shows up here is
-    the catalogue as it was written before, plus anything an older client added.
+    New writes resolve to one row automatically, so what shows up here is the
+    catalogue as it was written before, plus anything an older client added.
     Each group's first entry is the suggested keeper; collapse a group with
     `POST /ingredients/{keeper_id}/merge`.
 
-    `unfolded` is the related single-row case: an ingredient whose name would
-    now be stored differently but that has no twin to merge with. To tidy one,
-    `POST /ingredients` with its `canonical_name` and merge the old row into
-    the ingredient that comes back.
+    `unfolded` is the single-row leftover: a row from before writes carried an
+    identity key at all, stored under a spelling nothing would write today and
+    with no twin to merge with. To tidy one, `POST /ingredients` with its
+    `canonical_name` and merge the old row into the ingredient that comes back.
+    Rows a write created are never reported — keeping the household's own
+    spelling is the point (Q21).
 
     Reported groups are name-folding facts, not guesses — two ingredients that
     are really the same but share no wording ("beef mince" and "minced beef")

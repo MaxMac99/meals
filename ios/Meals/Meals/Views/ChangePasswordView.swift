@@ -18,10 +18,10 @@ struct ChangePasswordView: View {
 
     private var validationMessage: String? {
         if !newPassword.isEmpty && newPassword.count < Self.minimumLength {
-            return "New password must be at least \(Self.minimumLength) characters."
+            return String(localized: "New password must be at least \(Self.minimumLength) characters.")
         }
         if !confirmPassword.isEmpty && confirmPassword != newPassword {
-            return "The new passwords don't match."
+            return String(localized: "The new passwords don't match.")
         }
         return nil
     }

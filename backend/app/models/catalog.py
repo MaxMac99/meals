@@ -11,11 +11,13 @@ from app.services.values import DEFAULT_VALUE_TIER
 
 
 class Ingredient(Base):
-    """A canonical grocery item shared across recipes. Name is the canonical
-    key ('chopped tomatoes' from two recipes is one ingredient); the aisle
-    emoji drives shopping-list sort order; staples are hidden from the list by
-    default (decision Q5); the value tier says whether the posh version is
-    worth it (decision Q17)."""
+    """A grocery item shared across recipes. `name` is what the household
+    wrote and is shown verbatim everywhere; `canonical_name` is the folded,
+    lowercase identity key the write path matches on ('chopped tomatoes' from
+    two recipes is one ingredient — decision Q21). The aisle emoji drives
+    shopping-list sort order; staples are hidden from the list by default
+    (decision Q5); the value tier says whether the posh version is worth it
+    (decision Q17)."""
 
     __tablename__ = "ingredients"
     __table_args__ = (UniqueConstraint("household_id", "name", name="uq_ingredient_household_name"),)
@@ -23,6 +25,10 @@ class Ingredient(Base):
     id: Mapped[uuid.UUID] = mapped_column(Uuid, primary_key=True, default=uuid.uuid4)
     household_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("households.id"))
     name: Mapped[str] = mapped_column(String(200), index=True)
+    # The folded identity a write resolves to. Nullable only so rows written
+    # by a build predating this column (a rolling deploy's overlap window)
+    # still load; matching code falls back to folding `name` for them.
+    canonical_name: Mapped[str | None] = mapped_column(String(200), index=True)
     aisle: Mapped[str] = mapped_column(String(10), default=UNKNOWN_AISLE)
     is_staple: Mapped[bool] = mapped_column(Boolean, default=False)
     value_tier: Mapped[str] = mapped_column(String(10), default=DEFAULT_VALUE_TIER)  # premium | budget | any

@@ -139,8 +139,10 @@ final class UpgradeStateTests: XCTestCase {
         XCTAssertEqual(url, "https://example.com")
     }
 
-    func testBuildOnTheFloorButBehindTheShippedOneOnlyGetsANudge() {
-        XCTAssertEqual(Session.Upgrade(config: config(min: 2, current: 4), build: 2), .available(url: nil))
+    func testBuildBehindTheShippedOneIsNotNagged() {
+        // A build below `current_ios_build` still works, and a working build
+        // gets no banner — the nudge was removed as noise (only 426 blocks).
+        XCTAssertEqual(Session.Upgrade(config: config(min: 2, current: 4), build: 2), .ok)
     }
 
     func testCurrentBuildIsHappy() {
@@ -151,11 +153,5 @@ final class UpgradeStateTests: XCTestCase {
 
     func testAFloorOfZeroNeverBlocks() {
         XCTAssertEqual(Session.Upgrade(config: config(min: 0, current: 0), build: 0), .ok)
-    }
-
-    func testNudgeIsDismissibleButABlockIsNot() {
-        XCTAssertEqual(Session.Upgrade.available(url: nil).dismissingNudge, .ok)
-        let blocked = Session.Upgrade.required(detail: "too old", url: nil)
-        XCTAssertEqual(blocked.dismissingNudge, blocked)
     }
 }

@@ -115,10 +115,7 @@ struct IngredientEditorView: View {
                     .disabled(isSaving)
                 } footer: {
                     Text(
-                        "To rename, tap the name at the top — every recipe and list line "
-                            + "follows it, and if the new name already exists the two fold "
-                            + "together. Merge is for duplicates spelled too differently for "
-                            + "the finder — 'beef mince' next to 'minced beef'."
+                        "To rename, tap the name at the top — every recipe and list line follows it, and if the new name already exists the two fold together. Merge is for duplicates spelled too differently for the finder — 'beef mince' next to 'minced beef'."
                     )
                 }
 
@@ -136,7 +133,7 @@ struct IngredientEditorView: View {
                 ProgressView()
             }
         }
-        .navigationTitle(info?.name.capitalized ?? "Ingredient")
+        .navigationTitle(info?.name ?? String(localized: "Ingredient"))
         .navigationBarTitleDisplayMode(.inline)
         .task { await load() }
         .sheet(isPresented: $showMerge) {
@@ -168,7 +165,7 @@ struct IngredientEditorView: View {
             Text(renameNotice ?? "")
         }
         .confirmationDialog(
-            "'\(renameDraft.trimmingCharacters(in: .whitespaces))' already exists as '\(pendingRenameTarget?.name ?? "")'. Merge '\(info?.name ?? "")' into it? It keeps its own aisle, staple flag and verdict. This can't be undone.",
+            String(localized: "'\(renameDraft.trimmingCharacters(in: .whitespaces))' already exists as '\(pendingRenameTarget?.name ?? "")'. Merge '\(info?.name ?? "")' into it? It keeps its own aisle, staple flag and verdict. This can't be undone."),
             isPresented: .init(get: { pendingRenameTarget != nil }, set: { if !$0 { pendingRenameTarget = nil } }),
             titleVisibility: .visible
         ) {
@@ -194,7 +191,7 @@ struct IngredientEditorView: View {
         do {
             if let target = try await session.api.ingredient(named: newName) {
                 if target.id == info.id {
-                    renameNotice = "'\(newName)' is filed under '\(info.name)' — that's already this ingredient."
+                    renameNotice = String(localized: "'\(newName)' is filed under '\(info.name)' — that's already this ingredient.")
                 } else {
                     pendingRenameTarget = target  // folding two foods together needs a yes
                 }

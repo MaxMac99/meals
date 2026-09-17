@@ -40,11 +40,6 @@ struct RootView: View {
             } else if session.isAuthenticated {
                 MainTabView()
                     .task { await session.restore() }
-                    .safeAreaInset(edge: .top) {
-                        if case .available(let url) = session.upgrade {
-                            UpgradeBanner(upgradeURL: url)
-                        }
-                    }
             } else {
                 LoginView()
             }

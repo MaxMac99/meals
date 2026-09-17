@@ -61,11 +61,17 @@ final class QuantityParserTests: XCTestCase {
 }
 
 /// The unit vocabulary is a convenience, and rejections must arrive at the
-/// field rather than when the whole meal fails to save.
+/// field rather than when the whole meal fails to save. The conversion text
+/// comes from Foundation's measurement formatting, pinned to a locale here so
+/// the assertions hold whatever language the test host runs in.
 final class UnitVocabularyTests: XCTestCase {
+    private let english = Locale(identifier: "en_GB")
+
     func testRejectedUnitsCarryTheConversion() {
-        XCTAssertEqual(MealsUnits.rejection(for: "tbsp"), "1 tbsp = 15 ml")
-        XCTAssertEqual(MealsUnits.rejection(for: "  CUP "), "1 cup = 240 ml")
+        // Spelled out the way the locale itself writes units — British
+        // spelling and all; German renders "1 Teelöffel = 5 Milliliter".
+        XCTAssertEqual(MealsUnits.rejection(for: "tbsp", locale: english), "1 tablespoon = 15 millilitres")
+        XCTAssertEqual(MealsUnits.rejection(for: "  CUP ", locale: english), "1 cup = 240 millilitres")
     }
 
     func testAcceptedUnitsPassThrough() {

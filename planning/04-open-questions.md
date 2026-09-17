@@ -198,8 +198,7 @@ and two lines that could never merge. Decisions:
   earned its own aisle is by definition its own product.
 - **Detection reports facts, not guesses.** `GET /ingredients/duplicates` only
   groups names that fold to the same string. Looser heuristics were considered
-  and rejected: "garlic" is a subset of "garlic bread", and same-aisle
-  proximity would have proposed exactly the merges that lose someone's dinner.
+  and rejected: "garlic" is a subset of "garlic bread", and same-aisle  proximity would have proposed exactly the merges that lose someone's dinner.
 - **Merging repoints, it does not recompute.** Recipe lines, loose meal
   ingredients and list lines all move to the survivor, carrying their
   `ListItemSource` rows, so a merged line still knows why it is there
@@ -214,6 +213,21 @@ and two lines that could never merge. Decisions:
   queued offline operations against (Q11). The catalogue is cleaned up
   deliberately, through the merge endpoint, by someone who can see what they
   are merging.
+
+**Amendment (2026-09-17, from the German-localisation review): the fold is
+the identity key, never the display.** Until now the folded form *was* what
+got stored, so a household's "Käse" came back as "käse" and the iOS app had to
+re-capitalise names at display time. Now `ingredients.name` keeps what was
+written — trimmed, case and all — and the fold moves into a `canonical_name`
+column that the write path matches on (rows predating the column are found by
+folding their name, and the migration backfills the column by folding each
+row once). One row per food still holds: "Käse" and "käse" resolve to the
+same row, whichever spelling got there first is the one shown, and "mint
+leaves" and "mint" still share an identity. What changed is only who owns the
+spelling: the household, not the fold. `GET /ingredients/duplicates` still
+groups rows that share a key; the `unfolded` tidy-up offer survives only for
+rows from before the key column existed, since a row a write created is
+reachable by writing exactly what it shows.
 - **Also fixed at the source: `<n> <food> <unit>`.** "3 garlic cloves" parsed
   as `×3` of an ingredient called "garlic cloves" while "2 cloves garlic"
   parsed correctly, so the same food arrived under two names *and* two units.

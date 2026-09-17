@@ -15,8 +15,8 @@ enum APIError: LocalizedError, Equatable {
         // Deliberately says nothing about saving or syncing: only the shopping
         // list has a queue that can keep that promise (Q11), and this error is
         // raised on every path (#33).
-        case .offline: "You're offline."
-        case .invalidURL: "Invalid server URL."
+        case .offline: String(localized: "You're offline.")
+        case .invalidURL: String(localized: "Invalid server URL.")
         }
     }
 }
@@ -109,7 +109,7 @@ struct APIClient: Sendable {
         }
         let status = (response as? HTTPURLResponse)?.statusCode ?? 0
         guard status < 400 else {
-            let detail = Self.errorDetail(from: data) ?? "Request failed (\(status))"
+            let detail = Self.errorDetail(from: data) ?? String(localized: "Request failed (\(status))")
             switch status {
             case 401:
                 throw APIError.unauthorized(detail: detail)
@@ -156,9 +156,9 @@ enum RecipeSort: String, CaseIterable, Sendable {
 
     var label: String {
         switch self {
-        case .title: "A–Z"
-        case .mostCooked: "Most cooked"
-        case .leastRecentlyCooked: "Not had in a while"
+        case .title: String(localized: "A–Z")
+        case .mostCooked: String(localized: "Most cooked")
+        case .leastRecentlyCooked: String(localized: "Not had in a while")
         }
     }
 }
@@ -173,9 +173,9 @@ enum IngredientSort: String, CaseIterable, Sendable {
 
     var label: String {
         switch self {
-        case .name: "A–Z"
-        case .aisle: "By aisle"
-        case .valueTier: "By verdict"
+        case .name: String(localized: "A–Z")
+        case .aisle: String(localized: "By aisle")
+        case .valueTier: String(localized: "By verdict")
         }
     }
 }

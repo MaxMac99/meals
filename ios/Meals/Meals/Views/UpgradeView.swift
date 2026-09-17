@@ -59,11 +59,13 @@ struct UpgradeRequiredView: View {
                 .font(.callout)
                 .foregroundStyle(.secondary)
         } else if !listStore.pending.isEmpty {
-            Label(
-                "\(listStore.pending.count) change\(listStore.pending.count == 1 ? "" : "s") still to sync — "
-                    + "they're saved on this device.",
-                systemImage: "clock.arrow.circlepath"
-            )
+            Label {
+                Text(listStore.pending.count == 1
+                    ? String(localized: "1 change still to sync — it's saved on this device.")
+                    : String(localized: "\(listStore.pending.count) changes still to sync — they're saved on this device."))
+            } icon: {
+                Image(systemName: "clock.arrow.circlepath")
+            }
             .font(.callout)
             .foregroundStyle(.orange)
             .multilineTextAlignment(.center)
@@ -72,33 +74,5 @@ struct UpgradeRequiredView: View {
                 .font(.callout)
                 .foregroundStyle(.green)
         }
-    }
-}
-
-/// The soft case: this build still works, but a newer one is out.
-struct UpgradeBanner: View {
-    @Environment(Session.self) private var session
-
-    let upgradeURL: String?
-
-    var body: some View {
-        HStack {
-            Image(systemName: "arrow.up.circle.fill")
-            Text("A new version of Meals is available")
-                .font(.callout)
-            Spacer()
-            if let upgradeURL, let url = URL(string: upgradeURL) {
-                Link("Update", destination: url).font(.callout.bold())
-            }
-            Button {
-                session.dismissUpgradeNudge()
-            } label: {
-                Image(systemName: "xmark")
-            }
-            .accessibilityLabel("Dismiss")
-        }
-        .padding(.horizontal)
-        .padding(.vertical, 8)
-        .background(.thinMaterial)
     }
 }

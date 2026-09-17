@@ -145,9 +145,13 @@ struct RecipeEditorView: View {
                 }
             }
 
-            Section("Method") {
+            Section {
                 TextField("Instructions", text: $instructions, axis: .vertical)
                     .lineLimit(6...30)
+            } header: {
+                Text("Method")
+            } footer: {
+                Text("Markdown works here — **bold**, *italics*, headings, lists.")
             }
 
             if let errorMessage {

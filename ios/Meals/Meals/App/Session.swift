@@ -23,30 +23,24 @@ final class Session {
     private(set) var user: UserProfile?
 
     /// Where this build stands against the server's expectations. `.required`
-    /// blocks the UI; `.available` is a dismissible nudge.
+    /// takes over the whole window — MealsApp renders UpgradeRequiredView for
+    /// it and for nothing else, so the block is shown exactly when it applies.
+    /// There is no soft nudge: a working build works, and a banner nagging on
+    /// every foreground was noise nobody needed (the server still hard-blocks
+    /// a genuinely too-old build with 426).
     enum Upgrade: Equatable {
         case ok
-        case available(url: String?)
         case required(detail: String, url: String?)
 
         init(config: ClientConfig, build: Int) {
             if build < config.minIosBuild {
                 self = .required(
-                    detail: "This version of Meals is too old for the server (it needs build "
-                        + "\(config.minIosBuild), this is build \(build)). Update to carry on — anything "
-                        + "you've ticked off or added is saved and will sync.",
+                    detail: String(localized: "This version of Meals is too old for the server (it needs build \(config.minIosBuild), this is build \(build)). Update to carry on — anything you've ticked off or added is saved and will sync."),
                     url: config.upgradeUrl
                 )
-            } else if build < config.currentIosBuild {
-                self = .available(url: config.upgradeUrl)
             } else {
                 self = .ok
             }
-        }
-
-        /// A nudge can be waved away; a hard block can't be.
-        var dismissingNudge: Self {
-            if case .available = self { .ok } else { self }
         }
     }
 
@@ -175,15 +169,11 @@ final class Session {
         canResetPassword = config.passwordResetEnabled ?? true
     }
 
-    func dismissUpgradeNudge() {
-        upgrade = upgrade.dismissingNudge
-    }
-
     private func observeUpgradeNotices() {
         upgradeObserver = NotificationCenter.default.addObserver(
             forName: .mealsUpgradeRequired, object: nil, queue: nil
         ) { [weak self] note in
-            let detail = note.userInfo?["detail"] as? String ?? "This version of Meals is too old for the server."
+            let detail = note.userInfo?["detail"] as? String ?? String(localized: "This version of Meals is too old for the server.")
             let url = note.userInfo?["upgradeUrl"] as? String
             Task { @MainActor in self?.upgrade = .required(detail: detail, url: url) }
         }

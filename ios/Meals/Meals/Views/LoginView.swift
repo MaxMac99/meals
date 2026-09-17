@@ -46,9 +46,7 @@ struct LoginView: View {
                         }
                     } footer: {
                         Text(
-                            "Joining someone's household? Enter their invite code to share "
-                                + "their recipes, plan and shopping list. Leave it blank to start your "
-                                + "own, named whatever you like — “Home” if you'd rather not choose."
+                            String(localized: "Joining someone's household? Enter their invite code to share their recipes, plan and shopping list. Leave it blank to start your own, named whatever you like — “Home” if you'd rather not choose.")
                         )
                     }
                 }
@@ -135,9 +133,7 @@ struct LoginView: View {
                     Text("Server")
                 } footer: {
                     Text(
-                        "Meals has no cloud. Your recipes, plan and shopping list live on a "
-                            + "server you run — it's free, open source and one command to start. "
-                            + "Already in a household? Use its server's address and an invite code."
+                        String(localized: "Meals has no cloud. Your recipes, plan and shopping list live on a server you run — it's free, open source and one command to start. Already in a household? Use its server's address and an invite code.")
                     )
                 }
             }

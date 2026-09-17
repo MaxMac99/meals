@@ -139,8 +139,12 @@ final class ShoppingListStore {
         case .deleteItem(_, let itemID):
             items.removeAll { $0.id == itemID }
         case .addAdhoc(let id, let name, let quantity, let unit):
-            let canonical = name.lowercased().trimmingCharacters(in: .whitespaces)
-            if let index = items.firstIndex(where: { $0.name == canonical && $0.unit == unit }) {
+            // Names are shown exactly as they were stored — the merge only
+            // finds an existing line case-insensitively; what the user typed
+            // is what this device displays until server truth replaces it.
+            if let index = items.firstIndex(where: {
+                $0.name.compare(name, options: .caseInsensitive) == .orderedSame && $0.unit == unit
+            }) {
                 if let quantity {
                     items[index].quantity = (items[index].quantity ?? 0) + quantity
                     items[index].display = Self.displayQuantity(items[index].quantity, unit)
@@ -152,9 +156,9 @@ final class ShoppingListStore {
                     ListItem(
                         id: id,
                         ingredientId: id,
-                        name: canonical,
+                        name: name,
                         aisle: "❓",
-                        aisleLabel: "Unknown",
+                        aisleLabel: String(localized: "Unknown"),
                         isStaple: false,
                         quantity: quantity,
                         unit: unit,
