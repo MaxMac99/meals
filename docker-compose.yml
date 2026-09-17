@@ -27,6 +27,14 @@ services:
     environment:
       DATABASE_URL: postgresql+asyncpg://meals:meals@db:5432/meals
       ENVIRONMENT: development
+      # The built-in AI assistant (POST /assistant/chat). Off unless all three
+      # are set — off, the endpoint 404s and /client-config says so. Any
+      # OpenAI-compatible endpoint works via OPENAI_BASE_URL. See .env.example
+      # for the full story, and note that chat content is sent to the
+      # configured provider.
+      #LLM_PROVIDER: openai
+      #OPENAI_API_KEY: sk-…
+      #OPENAI_MODEL: gpt-…
     ports:
       - "8000:8000"
     depends_on:

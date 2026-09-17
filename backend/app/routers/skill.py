@@ -47,7 +47,10 @@ def base_url(request: Request) -> str:
     return f"{scheme}://{host}"
 
 
-def _load(filename: str) -> str:
+def load_skill_file(filename: str) -> str:
+    """Read a shipped skill file. Public because the built-in assistant
+    (app/assistant/prompts.py) builds its system prompt from the same file
+    the /skill endpoint serves — one playbook, every agent."""
     for directory in _SKILL_DIRS:
         path = directory / filename
         if path.is_file():
@@ -64,7 +67,7 @@ def playbook_version() -> int | None:
     that mismatch is how an assistant discovers its copy has aged out.
     """
     try:
-        markdown = _load("SKILL.md")
+        markdown = load_skill_file("SKILL.md")
     except HTTPException:
         return None
     match = _VERSION_MARKER.search(markdown)
@@ -83,7 +86,7 @@ async def read_skill(request: Request) -> str:
     Claude-family agents can install it as an Agent Skill; the workflow guidance applies to
     any assistant. No auth required.
     """
-    return _render(_load("SKILL.md"), request)
+    return _render(load_skill_file("SKILL.md"), request)
 
 
 @router.get("/skill/version")
@@ -107,4 +110,4 @@ async def read_prompt_pack(request: Request) -> str:
     Paste it into any assistant's custom instructions and replace {{YOUR_API_TOKEN}} with a
     personal API token (POST /auth/tokens). No auth required.
     """
-    return _render(_load("prompt-pack.md"), request)
+    return _render(load_skill_file("prompt-pack.md"), request)

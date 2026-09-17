@@ -34,7 +34,7 @@ from starlette.responses import PlainTextResponse, Response
 # they drift, and the backend suite fails if the guidance changes without a bump).
 # Instructions ship fresh on every connection, so this is the one channel that can
 # tell an assistant its installed skill snapshot has gone stale.
-PLAYBOOK_VERSION = 17
+PLAYBOOK_VERSION = 18
 
 # The caller's HTTP headers for the request being served, or None over stdio
 # (and in direct tool-function calls), where env-token auth applies.
@@ -264,6 +264,57 @@ async def submit_recipe(
     except ApiError as exc:
         return str(exc)
     return f"Recipe saved: {_fmt_recipe_summary(recipe)}"
+
+
+@mcp.tool()
+async def update_recipe(
+    recipe: str,
+    title: str | None = None,
+    servings: int | None = None,
+    prep_minutes: int | None = None,
+    cook_minutes: int | None = None,
+    instructions: str | None = None,
+    tags: list[str] | None = None,
+    ingredients: list[dict] | None = None,
+) -> str:
+    """Correct a recipe you saved or parsed: rename it, fix the servings or
+    the times, rewrite the instructions, or replace the ingredient lines
+    wholesale. Recipes can be named or given by id.
+
+    `ingredients` replaces the whole list — read the recipe first and send
+    every line, each as {"name": str, "quantity": number, "unit": str}
+    (metric g/kg/ml/l or natural counts; omit quantity+unit for 'to taste').
+    Every meal using the recipe re-syncs its shopping-list lines. The edit
+    marks the recipe human-edited, so reparse_recipe will refuse to
+    overwrite your corrections without force=True."""
+    try:
+        found = (await _resolve_recipes([recipe]))[0]
+        payload: dict[str, Any] = {}
+        if title:
+            payload["title"] = title
+        if servings is not None:
+            payload["servings"] = servings
+        if prep_minutes is not None:
+            payload["prep_minutes"] = prep_minutes
+        if cook_minutes is not None:
+            payload["cook_minutes"] = cook_minutes
+        if instructions is not None:
+            payload["instructions"] = instructions
+        if tags is not None:
+            payload["tags"] = tags
+        if ingredients is not None:
+            payload["ingredients"] = ingredients
+        if not payload:
+            return (
+                f"Nothing to change on '{found['title']}'. Pass title, servings, prep_minutes, "
+                "cook_minutes, instructions, tags or ingredients."
+            )
+        fresh = await _call("PATCH", f"/recipes/{found['id']}", json=payload)
+    except ApiError as exc:
+        return str(exc)
+    return f"Updated: {_fmt_recipe_summary(fresh)}\nIngredients now:\n" + "\n".join(
+        f"  - {line['name']}{_fmt_qty(line)}" for line in fresh["ingredients"]
+    )
 
 
 @mcp.tool()

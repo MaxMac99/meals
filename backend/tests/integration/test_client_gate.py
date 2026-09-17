@@ -133,6 +133,14 @@ class TestClientConfig:
         settings_override(SMTP_HOST="smtp.example.com", SMTP_FROM="meals@example.com")
         assert (await client.get("/client-config")).json()["password_reset_enabled"] is True
 
+    async def test_reports_whether_the_server_has_an_assistant(self, client, settings_override):
+        """Off unless a provider is configured, like billing_enabled. A client
+        that offered the chat on a server without one would only collect 404s,
+        so it shows its disabled state from this field instead."""
+        assert (await client.get("/client-config")).json()["assistant_enabled"] is False
+        settings_override(LLM_PROVIDER="openai", OPENAI_API_KEY="sk-test", OPENAI_MODEL="gpt-test")
+        assert (await client.get("/client-config")).json()["assistant_enabled"] is True
+
     async def test_identified_clients_learn_the_floor_from_any_response(self, auth_client, min_build):
         """The advisory headers let the app nudge without a second round trip."""
         min_build(1, current=2)

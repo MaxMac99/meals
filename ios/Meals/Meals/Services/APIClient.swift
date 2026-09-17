@@ -712,6 +712,29 @@ protocol ShoppingAPI: Sendable {
 }
 
 extension APIClient: ShoppingAPI {
+    // MARK: - Assistant
+
+    /// One turn of the built-in assistant: the recent conversation plus the
+    /// new user message. `confirmedAction` carries the destructive action
+    /// the household just accepted in the dialog, arguments verbatim — the
+    /// server re-validates it, never trusting the client. A server without
+    /// an assistant configured answers 404; the detail is a sentence.
+    func assistantChat(
+        messages: [AssistantMessage], confirmedAction: AssistantAction? = nil
+    ) async throws -> AssistantChatResponse {
+        var payload: [String: Any?] = [
+            "messages": messages.map { ["role": $0.role.rawValue, "content": $0.content] }
+        ]
+        if let confirmedAction {
+            payload["confirmed_action"] = [
+                "tool": confirmedAction.tool,
+                "arguments": confirmedAction.arguments.mapValues(\.anyValue),
+                "summary": confirmedAction.summary,
+            ]
+        }
+        return try await send("POST", "/assistant/chat", json: payload, as: AssistantChatResponse.self)
+    }
+
     func fetchList() async throws -> ShoppingListPayload {
         // Always fetch everything; staples/excluded are filtered client-side
         // so one cached payload serves every toggle offline.

@@ -457,6 +457,42 @@ class TestRecipeUsage:
         assert "No recipe matching 'tiramisu'" in result
         assert "Garlic bread" in result
 
+    @respx.mock
+    async def test_update_recipe_sends_only_what_was_asked(self):
+        respx.get(f"{API}/recipes").mock(
+            return_value=httpx.Response(200, json=[_library_recipe("r1", "Hack-Reis-Pfanne")])
+        )
+        route = respx.patch(f"{API}/recipes/r1").mock(
+            return_value=httpx.Response(
+                200,
+                json={
+                    **_library_recipe("r1", "Hack-Reis-Pfanne"),
+                    "prep_minutes": 10,
+                    "ingredients": [{"name": "minced beef", "quantity": 600, "unit": "g", "display": "600 g"}],
+                },
+            )
+        )
+        result = await server.update_recipe(
+            "Hack-Reis-Pfanne",
+            prep_minutes=10,
+            ingredients=[{"name": "minced beef", "quantity": 600, "unit": "g"}],
+        )
+        assert "Updated: Hack-Reis-Pfanne" in result
+        assert "minced beef — 600 g" in result
+        sent = json.loads(route.calls.last.request.content)
+        # A true PATCH: untouched fields stay untouched, or a rename could
+        # silently blank the recipe.
+        assert set(sent) == {"prep_minutes", "ingredients"}
+
+    @respx.mock
+    async def test_update_recipe_with_nothing_to_change_says_so(self):
+        library = respx.get(f"{API}/recipes").mock(
+            return_value=httpx.Response(200, json=[_library_recipe("r1", "Chilli")])
+        )
+        result = await server.update_recipe("Chilli")
+        assert "Nothing to change" in result
+        assert not library.called or result  # the resolution read happened; nothing else
+
 
 class TestMealEditing:
     MEALS = [

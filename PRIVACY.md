@@ -70,6 +70,17 @@ asked for:
 - **Password reset emails.** If your server has email configured, a reset code
   is sent through its mail relay. If it isn't configured, password reset is
   simply unavailable.
+- **The built-in AI assistant.** If your server has an LLM provider configured,
+  each chat message sends three things to that provider: the system prompt
+  (the same operating manual the server publishes at `/skill`), the recent
+  conversation, and the tool results the model asked for — which are this
+  household's own meals, plans and shopping list. The server's operator chose
+  the provider and therefore where that data goes; chat content is never
+  written to the server's logs, and the API key lives only on the server. With
+  no provider configured there is no assistant at all, and nothing is ever
+  sent. Connecting your *own* assistant to the API with a personal token is
+  the same idea in your hands: it sees whatever it asks for, and deleting the
+  token stops it immediately.
 
 If you connect an AI assistant to the API with a personal token, that assistant
 sees whatever it asks for. That connection is yours to make and yours to revoke

@@ -220,8 +220,8 @@ class TestPublicPages:
 # Without this, guidance can ship under an unchanged number — which is exactly
 # what happened when the premium/budget tools landed on v1: a stale v1 copy
 # compared v1 to v1, found no drift, and never learned the tools existed.
-PINNED_PLAYBOOK_VERSION = 17
-PINNED_PLAYBOOK_DIGEST = "c41c0cf8ad52f8de1e19b18a3f2e948dcb5efd1157029d59ff69d55e2abb7508"
+PINNED_PLAYBOOK_VERSION = 18
+PINNED_PLAYBOOK_DIGEST = "a653267e13ec292093ecef4b9fd20e130d12d0f88058518fceaa08a61b76660f"
 
 _VERSION_STAMP = re.compile(r"<!--\s*playbook-version:\s*\d+\s*-->\n?")
 _VERSION_PROSE = re.compile(r"playbook v\d+", re.IGNORECASE)
@@ -235,7 +235,7 @@ def playbook_digest() -> str:
     """
     documents = []
     for filename in ("SKILL.md", "prompt-pack.md"):
-        text = _VERSION_STAMP.sub("", skill_router._load(filename))
+        text = _VERSION_STAMP.sub("", skill_router.load_skill_file(filename))
         documents.append(_VERSION_PROSE.sub("playbook vN", text))
     return hashlib.sha256("\0".join(documents).encode("utf-8")).hexdigest()
 
@@ -262,15 +262,17 @@ class TestPlaybookVersion:
         """Guard the normalisation, so the pin fires on the right event: a bump on its
         own must not move the digest, and any edit to the guidance must."""
         baseline = playbook_digest()
-        original = skill_router._load
+        original = skill_router.load_skill_file
 
         def renumbered(filename: str) -> str:
             return re.sub(r"(?i)(playbook-version:\s*|playbook v)\d+", r"\g<1>99", original(filename))
 
-        monkeypatch.setattr(skill_router, "_load", renumbered)
+        monkeypatch.setattr(skill_router, "load_skill_file", renumbered)
         assert playbook_digest() == baseline
 
-        monkeypatch.setattr(skill_router, "_load", lambda filename: original(filename) + "\nBuy the posh oil.\n")
+        monkeypatch.setattr(
+            skill_router, "load_skill_file", lambda filename: original(filename) + "\nBuy the posh oil.\n"
+        )
         assert playbook_digest() != baseline
 
     async def test_both_documents_carry_the_stamp(self, client):
