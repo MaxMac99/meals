@@ -1,15 +1,17 @@
 import Foundation
 
 /// Server slot vocabulary (dinner/lunch/breakfast/other) shown as a section
-/// header or a caption. The raw value stays what is sent to the API.
-extension String {
-    var slotLabel: String {
-        switch self {
+/// header or a caption. Deliberately a helper and not a String extension: an
+/// API vocabulary shouldn't hang off every string in the app. The raw value
+/// stays what is sent to the API.
+enum SlotLabel {
+    static func label(for slot: String) -> String {
+        switch slot {
         case "dinner": String(localized: "dinner-slot")
         case "lunch": String(localized: "lunch-slot")
         case "breakfast": String(localized: "breakfast-slot")
         case "other": String(localized: "other-slot")
-        default: capitalized
+        default: slot.capitalized
         }
     }
 }

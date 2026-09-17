@@ -98,7 +98,7 @@ struct MealEditorView: View {
             Section {
                 TextField(namePlaceholder, text: $name)
                 Picker("Slot", selection: $slot) {
-                    ForEach(slots, id: \.self) { Text($0.slotLabel) }
+                    ForEach(slots, id: \.self) { Text(SlotLabel.label(for: $0)) }
                 }
             }
 

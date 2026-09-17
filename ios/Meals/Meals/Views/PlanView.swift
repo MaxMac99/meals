@@ -121,7 +121,7 @@ struct PlanView: View {
                 }
             }
             ForEach(plan.slots, id: \.slot) { group in
-                Section(group.slot.slotLabel) {
+                Section(SlotLabel.label(for: group.slot)) {
                     ForEach(group.meals) { planMeal in
                         PlanMealRow(planMeal: planMeal)
                     }
@@ -298,7 +298,7 @@ struct PastPlanDetailView: View {
                         }
                     }
                     ForEach(plan.slots, id: \.slot) { group in
-                        Section(group.slot.slotLabel) {
+                        Section(SlotLabel.label(for: group.slot)) {
                             ForEach(group.meals) { planMeal in
                                 HStack {
                                     Text(planMeal.meal.name)
