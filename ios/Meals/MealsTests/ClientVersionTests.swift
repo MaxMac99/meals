@@ -87,7 +87,7 @@ final class ClientGateTests: XCTestCase {
             config,
             ClientConfig(
                 apiVersion: "0.1.0", minIosBuild: 2, currentIosBuild: 4, upgradeUrl: nil,
-                passwordResetEnabled: nil
+                passwordResetEnabled: nil, assistantEnabled: nil
             )
         )
     }
@@ -127,7 +127,7 @@ final class UpgradeStateTests: XCTestCase {
     private func config(min: Int, current: Int, url: String? = nil) -> ClientConfig {
         ClientConfig(
             apiVersion: "0.1.0", minIosBuild: min, currentIosBuild: current, upgradeUrl: url,
-            passwordResetEnabled: nil
+            passwordResetEnabled: nil, assistantEnabled: nil
         )
     }
 

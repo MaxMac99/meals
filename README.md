@@ -302,6 +302,44 @@ editing what the playbook *says* fails
 `test_guidance_changes_are_announced_by_a_version_bump` until the version is
 bumped; the failure message prints the new digest to paste in.
 
+### The built-in assistant (optional, off by default)
+
+The iPhone app ships a chat tab that talks to this same API through a
+server-side agent: `POST /assistant/chat`, an LLM of the deployment's
+choosing, and the MCP tools executed in-process against the routers. It is
+the same agent an external assistant gets over `/mcp` — the tool names,
+descriptions and schemas are read from the MCP server at runtime, and the
+system prompt is the same `skill/SKILL.md` — so there is no second set of AI
+rules to maintain and nothing behaves differently from a connected
+assistant.
+
+**Off unless configured.** No provider configured means the endpoint answers
+404, `/client-config` publishes `assistant_enabled: false`, and the app shows
+its disabled screen — every normal Meals workflow runs untouched. Enabling
+it needs three environment variables on the server (see `.env.example`):
+
+```text
+LLM_PROVIDER=openai
+OPENAI_API_KEY=sk-…
+OPENAI_MODEL=gpt-…        # no default in code — the deployment chooses
+```
+
+Any OpenAI-compatible endpoint works through `OPENAI_BASE_URL` (a local
+server, a gateway, OpenRouter). The key is server-side only: it is never
+logged and never reaches a client, and the app authenticates with the same
+bearer token as everywhere else, so the agent can only reach that user's own
+household. Destructive actions (deleting recipes, meals or ingredients,
+merging, archiving the list) are held behind a native confirmation dialog —
+the server returns a structured `action`, the app asks, and the confirmed
+envelope is re-validated server-side before anything runs.
+
+**What a chat turn sends to the provider:** the system prompt (the playbook
+from `/skill`), the recent conversation, and the tool results the model
+asked for — which are that household's own meals, plans and list. The
+operator chooses the provider and its region; nothing is sent while no
+provider is configured, and messages are never written to the server's logs
+(events carry ids and outcomes only).
+
 ### The quantity convention (decision Q2)
 
 Every quantity is **metric** (g/kg/ml/l) or a **count of a natural unit**

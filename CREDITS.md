@@ -20,10 +20,8 @@ Every deployment serves it at `/credits`, rendered from this file, the same way
 
 ## What the server is built on
 
-The fifteen dependencies this project actually chose, in
-`backend/pyproject.toml` and `mcp/pyproject.toml`.
-
-| Package | Licence | What it does here |
+The sixteen dependencies this project actually chose, in
+`backend/pyproject.toml` and `mcp/pyproject.toml`.| Package | Licence | What it does here |
 | --- | --- | --- |
 | [aiosmtplib](https://github.com/cole/aiosmtplib) | MIT | Sends the password-reset and dunning mail without blocking the event loop. |
 | [aiosqlite](https://github.com/omnilib/aiosqlite) | MIT | The async SQLite driver: the default one-container database, and every test in this repo. |
@@ -35,6 +33,7 @@ The fifteen dependencies this project actually chose, in
 | [httpx](https://github.com/encode/httpx) | BSD-3-Clause | Fetching recipe pages, and how the mounted MCP server calls the API over loopback. |
 | [markdown-it-py](https://github.com/executablebooks/markdown-it-py) | MIT | Renders this page, along with `/privacy`, `/support` and `/terms`. |
 | [mcp](https://modelcontextprotocol.io) | MIT | The Model Context Protocol SDK the server at `/mcp` is built on. |
+| [openai](https://github.com/openai/openai-python) | Apache-2.0 | The built-in assistant's LLM calls — server-side only, and only when a deployment configures a provider. Any OpenAI-compatible endpoint works through `OPENAI_BASE_URL`. |
 | [prometheus-client](https://github.com/prometheus/client_python) | Apache-2.0 AND BSD-2-Clause | The counters and histograms behind `/metrics`. |
 | [pydantic](https://github.com/pydantic/pydantic) | MIT | Every request and response schema, and the validation that lets a 422 say something useful. |
 | [pydantic-settings](https://github.com/pydantic/pydantic-settings) | MIT | Configuration from the environment, in one typed place. |
@@ -64,6 +63,7 @@ Nobody picked these directly. They are holding the thing up all the same.
 | [httptools](https://github.com/MagicStack/httptools) | MIT |
 | [httpx2](https://github.com/pydantic/httpx2) | BSD-3-Clause |
 | [idna](https://github.com/kjd/idna) | BSD-3-Clause |
+| [jiter](https://github.com/pydantic/jiter) | MIT OR Apache-2.0 |
 | [jsonschema](https://github.com/python-jsonschema/jsonschema) | MIT |
 | [jsonschema-specifications](https://github.com/python-jsonschema/jsonschema-specifications) | MIT |
 | [mako](https://www.makotemplates.org/) | MIT |
@@ -79,6 +79,7 @@ Nobody picked these directly. They are holding the thing up all the same.
 | [pyyaml](https://pyyaml.org/) | MIT |
 | [referencing](https://github.com/python-jsonschema/referencing) | MIT |
 | [rpds-py](https://github.com/crate-py/rpds) | MIT |
+| [sniffio](https://github.com/python-trio/sniffio) | MIT OR Apache-2.0 |
 | [soupsieve](https://github.com/facelessuser/soupsieve) | MIT |
 | [sse-starlette](https://github.com/sysid/sse-starlette) | BSD-3-Clause |
 | [starlette](https://github.com/Kludex/starlette) | BSD-3-Clause |

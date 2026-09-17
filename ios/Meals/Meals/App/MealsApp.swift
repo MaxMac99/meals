@@ -6,6 +6,7 @@ struct MealsApp: App {
     @State private var planStore: PlanStore
     @State private var recipeStore: RecipeStore
     @State private var listStore: ShoppingListStore
+    @State private var assistantStore: AssistantStore
 
     init() {
         let session = Session()
@@ -13,6 +14,7 @@ struct MealsApp: App {
         _planStore = State(initialValue: PlanStore(api: { session.api }))
         _recipeStore = State(initialValue: RecipeStore(api: { session.api }))
         _listStore = State(initialValue: ShoppingListStore(api: { session.api }))
+        _assistantStore = State(initialValue: AssistantStore(api: { session.api }))
     }
 
     var body: some Scene {
@@ -22,6 +24,7 @@ struct MealsApp: App {
                 .environment(planStore)
                 .environment(recipeStore)
                 .environment(listStore)
+                .environment(assistantStore)
         }
     }
 }
@@ -68,6 +71,8 @@ struct MainTabView: View {
                 .tabItem { Label("Recipes", systemImage: "book") }
             ShoppingListView()
                 .tabItem { Label("Shopping", systemImage: "cart") }
+            AssistantView()
+                .tabItem { Label("Assistant", systemImage: "sparkles") }
             IngredientsView()
                 .tabItem { Label("Ingredients", systemImage: "carrot") }
             SettingsView()

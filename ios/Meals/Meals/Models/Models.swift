@@ -232,6 +232,11 @@ struct ClientConfig: Codable, Equatable, Sendable {
     /// mean "assume it works" rather than a decode failure that would take the
     /// whole config — including the upgrade floor — down with it.
     let passwordResetEnabled: Bool?
+    /// Whether the server serves the built-in AI assistant. Optional for the
+    /// same reason, but absent means *off* — unlike password resets, a server
+    /// that predates the assistant really doesn't have one, and the chat tab
+    /// must show its disabled state rather than 404-collect.
+    let assistantEnabled: Bool?
 }
 
 struct RecipeSummary: Codable, Identifiable, Equatable, Sendable {

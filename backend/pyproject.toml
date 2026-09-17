@@ -18,6 +18,10 @@ dependencies = [
     "aiosmtplib>=3.0",
     "markdown-it-py>=3.0",
     "prometheus-client>=0.26.0",
+    # The built-in assistant's LLM calls (app/assistant/). Only ever used
+    # server-side; LLM_PROVIDER=disabled (the default) leaves it unused. It
+    # also speaks to any OpenAI-compatible endpoint via OPENAI_BASE_URL.
+    "openai>=2.0",
     # The MCP server, mounted at /mcp so one container is the whole product
     # (app/mcp_mount.py). It stays a separate package with its own image and
     # its own tests: this is a path dependency, not a merge.

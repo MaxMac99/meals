@@ -4,6 +4,7 @@ import os
 
 os.environ["DATABASE_URL"] = "sqlite+aiosqlite://"
 os.environ["AUTH_RATE_LIMIT_PER_MINUTE"] = "0"
+os.environ["ASSISTANT_RATE_LIMIT_PER_MINUTE"] = "0"
 os.environ["ENVIRONMENT"] = "test"
 
 from collections.abc import AsyncIterator  # noqa: E402

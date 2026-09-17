@@ -3,7 +3,7 @@ name: meal-planner
 description: Plan meals and manage the shopping list through the Meals API/MCP. Use when the user shares recipe links, asks what to cook, wants to plan the week's meals, needs the shopping list, says they're out of something, or mentions the freezer. Covers recipe ingestion (including parsing pages the backend can't), building meal options, shopping-mode check-offs, and the running tab of what's in the freezer.
 ---
 
-<!-- playbook-version: 17 -->
+<!-- playbook-version: 18 -->
 
 # Being a great meal-planning assistant
 
@@ -12,7 +12,7 @@ calendar), a recipe library, and an aisle-sorted shopping list that knows why
 every item is on it. Prefer the MCP tools when connected; otherwise use the
 REST API (OpenAPI at `/openapi.json`, auth via `Authorization: Bearer <PAT>`).
 
-**This is playbook v17, and this file is a snapshot** — once installed it never
+**This is playbook v18, and this file is a snapshot** — once installed it never
 updates itself. If a connected Meals MCP server names a higher playbook version
 in its instructions, or `GET {{API_URL}}/skill/version` reports one, this copy
 is stale: fetch `{{API_URL}}/skill`, follow the fresh copy for the rest of the
@@ -136,6 +136,14 @@ Extract and submit via `submit_recipe` / `POST /recipes`:
   be scaled this way — the error says so; set its servings or work out the
   multiplier and use `scale_recipes`. Give a recipe one or the other, never
   both. Meals read back with `scaled_servings` next to `scale`.
+- **Correcting a recipe** — `update_recipe(recipe, title=..., servings=...,
+  ingredients=[...])` renames it, fixes servings or times, rewrites the
+  instructions, or replaces ingredient lines wholesale (read it first and
+  send every line; every meal using it re-syncs its shopping-list lines).
+  An edit marks the recipe human-edited, so `reparse_recipe` refuses to
+  overwrite the corrections without `force`. Make a dish "more of
+  something" by editing the recipe's lines, not by scaling one meal — the
+  recipe is where the household will look for it.
 - **The source page has changed** — `reparse_recipe(title)` re-reads the recipe
   from the URL it came from. Recipes are parsed once and reused forever, so
   nothing else picks up a correction the site has made. The recipe keeps its

@@ -18,6 +18,7 @@ import json
 from pathlib import Path
 
 import pytest
+from pydantic import ValidationError
 
 from app import limits
 from app.config import BlankIsDefault, Settings
@@ -42,6 +43,9 @@ BLANK_IS_DEFAULT = [
     ("LIMITS_PROFILE", "limits_profile"),
     ("DEFAULT_HOUSEHOLD_TIER", "default_household_tier"),
     ("BILLING_PRICE_CURRENCY", "billing_price_currency"),
+    # "Set" for this one is covered by TestAssistantSettings: a provider
+    # named without its credentials is a boot error, not a working setting.
+    ("LLM_PROVIDER", "llm_provider"),
 ]
 
 # A real value for each, different from the default, so "blank falls back" and
@@ -161,7 +165,7 @@ class TestBlankMeansDefault:
         expected = Settings.model_fields[attribute].default
         assert getattr(_settings(monkeypatch, **{env_var: blank}), attribute) == expected
 
-    @pytest.mark.parametrize(("env_var", "attribute"), BLANK_IS_DEFAULT)
+    @pytest.mark.parametrize(("env_var", "attribute"), [pair for pair in BLANK_IS_DEFAULT if pair[0] in SET_VALUES])
     def test_a_set_value_still_wins(self, monkeypatch, env_var, attribute):
         raw, expected = SET_VALUES[env_var]
         assert getattr(_settings(monkeypatch, **{env_var: raw}), attribute) == expected
@@ -208,3 +212,52 @@ class TestBlankMeansDefault:
         """
         assert _settings(monkeypatch, DATABASE_URL="").database_url == ""
         assert Settings.model_fields["database_url"].default != ""
+
+
+class TestAssistantSettings:
+    """The assistant is off unless a deployment names a provider, and naming
+    one means naming its key and its model.
+
+    There is deliberately no default model in code (see config.py), so the
+    pair is exactly what `assistant_enabled` reads — and a config that forgot
+    either half is a boot failure rather than a 404 somebody meets on their
+    first chat message.
+    """
+
+    def test_off_by_default_and_needing_nothing(self, monkeypatch):
+        # A self-hosted instance that set nothing must boot with no provider
+        # credential anywhere — the whole feature is invisible to it.
+        monkeypatch.delenv("OPENAI_API_KEY", raising=False)
+        monkeypatch.delenv("OPENAI_MODEL", raising=False)
+        monkeypatch.delenv("LLM_PROVIDER", raising=False)
+        settings = _settings(monkeypatch)
+        assert settings.llm_provider == "disabled"
+        assert settings.assistant_enabled is False
+        assert settings.openai_api_key is None
+
+    def test_credentials_while_off_are_ignored(self, monkeypatch):
+        # Key and model without a provider: the deployment stays off, and
+        # nothing demands the missing LLM_PROVIDER or errors on the unused
+        # settings — they are simply inert.
+        settings = _settings(monkeypatch, OPENAI_API_KEY="sk-test", OPENAI_MODEL="gpt-test")
+        assert settings.assistant_enabled is False
+
+    def test_openai_without_a_key_is_refused_at_boot(self):
+        with pytest.raises(ValidationError, match="OPENAI_API_KEY"):
+            Settings(_env_file=None, llm_provider="openai")
+
+    def test_openai_without_a_model_is_refused_at_boot(self):
+        # The model is the half with no default in code, so it is the half a
+        # deploy can most plausibly forget.
+        with pytest.raises(ValidationError, match="OPENAI_MODEL"):
+            Settings(_env_file=None, llm_provider="openai", openai_api_key="sk-test")
+
+    def test_an_unknown_provider_is_refused_at_boot(self):
+        # 'claude' or a typo reads like it should work; refusing at boot names
+        # the fix instead of answering every chat with a 404.
+        with pytest.raises(ValidationError, match="not a known provider"):
+            Settings(_env_file=None, llm_provider="claude", openai_api_key="sk-test", openai_model="m")
+
+    def test_a_named_provider_with_both_halves_enables_the_assistant(self, monkeypatch):
+        settings = _settings(monkeypatch, LLM_PROVIDER="openai", OPENAI_API_KEY="sk-test", OPENAI_MODEL="gpt-test")
+        assert settings.assistant_enabled is True

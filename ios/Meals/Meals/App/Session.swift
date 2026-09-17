@@ -52,6 +52,12 @@ final class Session {
     /// failure than hiding one that would have worked.
     private(set) var canResetPassword = true
 
+    /// Whether this server serves the built-in AI assistant. Pessimistic —
+    /// the opposite of `canResetPassword` on purpose: a server that predates
+    /// the assistant has no chat at all, so the tab must be quiet about it
+    /// until `/client-config` says otherwise.
+    private(set) var assistantEnabled = false
+
     // Written once in init, read once in deinit (which is nonisolated), so it
     // steps outside the actor rather than dragging the rest of Session with it.
     @ObservationIgnored private nonisolated(unsafe) var upgradeObserver: (any NSObjectProtocol)?
@@ -167,6 +173,9 @@ final class Session {
         // Absent means an older server that never published the key, and those
         // do send reset codes — so only an explicit false takes the button away.
         canResetPassword = config.passwordResetEnabled ?? true
+        // The assistant is the other direction: absent means an older server
+        // that has no chat, and only an explicit true turns it on.
+        assistantEnabled = config.assistantEnabled ?? false
     }
 
     private func observeUpgradeNotices() {

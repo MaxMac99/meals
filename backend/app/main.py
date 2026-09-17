@@ -13,6 +13,7 @@ from app import client_gate, limits, mcp_mount, metrics, observability
 from app.config import get_settings
 from app.observability import log_event
 from app.routers import (
+    assistant,
     auth,
     billing,
     freezer,
@@ -166,6 +167,9 @@ app.include_router(pages.router)
 app.include_router(limits_router.router)
 app.include_router(household.router)
 app.include_router(billing.router)
+# Always routed; the endpoint 404s itself while no LLM provider is
+# configured, so "off" keeps meaning "does not exist" (see the module).
+app.include_router(assistant.router)
 
 # The web client is served by the API itself so it is always same-origin with
 # the endpoints it calls — no CORS, no second host to deploy or certify. Plain
@@ -284,7 +288,14 @@ async def client_config() -> dict:
     what one household holds and have no way to take a penny, and almost every
     one does. It is the single answer to that question — a client that inferred
     it from the shape of the limits, or from a 404, would eventually disagree
-    with the server about it."""
+    with the server about it.
+
+    `assistant_enabled` says whether this deployment serves the built-in AI
+    assistant (POST /assistant/chat). Same shape as `password_reset_enabled`:
+    a client that offers the chat on a server without a provider would only
+    collect 404s, so it shows its disabled state from this field instead —
+    and absent on an older server means off, because that server has no chat
+    to offer."""
     config = get_settings()
     return {
         "api_version": app.version,
@@ -294,6 +305,7 @@ async def client_config() -> dict:
         "password_reset_enabled": config.email_configured,
         "free_tier_limits": limits.free_tier_allowances(),
         "billing_enabled": config.billing_sells,
+        "assistant_enabled": config.assistant_enabled,
     }
 
 

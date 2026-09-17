@@ -119,6 +119,13 @@ class Settings(BaseSettings):
     # Requests per minute per IP on the auth endpoints (public API hardening).
     auth_rate_limit_per_minute: int = 10
 
+    # Requests per minute per household on the built-in assistant. The LLM
+    # behind it is a per-request cost this server pays, so the chat is
+    # throttled like the auth endpoints — but by household rather than IP,
+    # because a shared household sits behind one connection and a stolen
+    # token is the same household either way. 0 disables the throttle.
+    assistant_rate_limit_per_minute: int = 10
+
     # Prometheus metrics (app/metrics.py). Unset, GET /metrics 404s and no
     # background work runs; set, the endpoint answers to
     # `Authorization: Bearer <METRICS_TOKEN>` only — it shares the public
@@ -249,6 +256,49 @@ class Settings(BaseSettings):
     billing_price_currency: Annotated[str, BlankIsDefault] = "GBP"
     billing_api_timeout_seconds: float = 20.0
 
+    # Built-in AI assistant (app/assistant/). Off unless LLM_PROVIDER names a
+    # provider, and off means POST /assistant/chat does not exist (404) — the
+    # same posture as the billing webhook and /metrics: a self-hosted instance
+    # must not be able to acquire an LLM bill by accident, and every normal
+    # workflow works with nothing set. The API key is server-side only — never
+    # logged, never sent to a client; /client-config publishes only the boolean.
+    #
+    #   LLM_PROVIDER         "disabled" (default) or "openai" — which also
+    #                        speaks to any OpenAI-compatible endpoint through
+    #                        OPENAI_BASE_URL (a local server, a proxy, a
+    #                        gateway).
+    #   OPENAI_API_KEY       the provider credential. Required while the
+    #                        provider is active; ignored while it is off.
+    #   OPENAI_MODEL         which model to drive. Required while the provider
+    #                        is active, and deliberately without a default in
+    #                        code: choosing a model is a deployment decision
+    #                        (cost, capability, data residency), so a config
+    #                        that forgot it fails at boot rather than on the
+    #                        first chat message.
+    #   OPENAI_BASE_URL      optional; where the OpenAI-compatible client
+    #                        points. Unset, the provider's own default.
+    #   LLM_TIMEOUT_SECONDS  per-request timeout for one provider call. Tool
+    #                        rounds can stack up, so this is generous on
+    #                        purpose — the client's own patience is the real
+    #                        budget.
+    llm_provider: Annotated[str, BlankIsDefault] = "disabled"
+    openai_api_key: str | None = None
+    openai_model: str | None = None
+    openai_base_url: str | None = None
+    llm_timeout_seconds: float = 60.0
+
+    @property
+    def assistant_enabled(self) -> bool:
+        """Whether this deployment serves the built-in AI assistant.
+
+        The single answer to "does this server have the chat", published on
+        /client-config so a client can show its disabled state without
+        asking. A server that configured nothing has no assistant at all —
+        the chat route answers 404 for anyone who tries, exactly like
+        /metrics without a token.
+        """
+        return self.llm_provider == "openai" and bool(self.openai_api_key) and bool(self.openai_model)
+
     @property
     def billing_configured(self) -> bool:
         return bool(self.billing_processor and self.billing_webhook_secret)
@@ -344,6 +394,33 @@ class Settings(BaseSettings):
             raise ValueError(
                 f"min_ios_build ({self.min_ios_build}) is above current_ios_build "
                 f"({self.current_ios_build}) — ship that build first, then raise the floor"
+            )
+        return self
+
+    @model_validator(mode="after")
+    def _an_active_assistant_needs_its_provider(self) -> Self:
+        # LLM_PROVIDER=openai that forgot its key or its model would surface as
+        # a 404 on the first chat message, hours after the deploy. Boot is the
+        # right place to say which setting is missing. A deployment that named
+        # no provider needs nothing — the assistant is off, and nothing here
+        # demands a credential it would never use.
+        if self.llm_provider in ("", "disabled"):
+            return self
+        if self.llm_provider != "openai":
+            raise ValueError(
+                f"LLM_PROVIDER={self.llm_provider!r} is not a known provider: "
+                "use 'openai' (any OpenAI-compatible endpoint via OPENAI_BASE_URL) "
+                "or leave it unset/disabled"
+            )
+        if not self.openai_api_key:
+            raise ValueError(
+                "LLM_PROVIDER=openai needs OPENAI_API_KEY; set it, or leave "
+                "LLM_PROVIDER unset to keep the assistant off"
+            )
+        if not self.openai_model:
+            raise ValueError(
+                "LLM_PROVIDER=openai needs OPENAI_MODEL: there is no default model in "
+                "code, so the deployment chooses one"
             )
         return self
 
