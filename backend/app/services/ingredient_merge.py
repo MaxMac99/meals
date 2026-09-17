@@ -75,12 +75,7 @@ async def find_unfolded(db: AsyncSession, household_id: uuid.UUID) -> list[tuple
         # A twin is another row sharing this identity — counted per row, not
         # as a set, because the twin's key can equal this row's own fold.
         others = {identity_key(other) for other in ingredients if other.id != ingredient.id}
-        if (
-            ingredient.canonical_name is None
-            and canonical
-            and canonical != ingredient.name
-            and canonical not in others
-        ):
+        if ingredient.canonical_name is None and canonical and canonical != ingredient.name and canonical not in others:
             unfolded.append((ingredient, canonical))
     return unfolded
 

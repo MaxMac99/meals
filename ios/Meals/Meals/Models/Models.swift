@@ -217,9 +217,11 @@ struct AccountDeleted: Codable, Sendable {
     let detail: String
 }
 
-/// What the server expects of native clients (GET /client-config). Builds below
-/// `minIosBuild` are refused with 426 on everything except the offline-queue
-/// endpoints; builds below `currentIosBuild` just get a nudge.
+/// What the server expects of native clients (GET /client-config). Builds
+/// below `minIosBuild` are refused with 426 on everything except the
+/// offline-queue endpoints — that hard block is the only upgrade surface left;
+/// the soft banner that used `currentIosBuild` was removed as noise and
+/// nothing reads it any more.
 struct ClientConfig: Codable, Equatable, Sendable {
     let apiVersion: String
     let minIosBuild: Int
