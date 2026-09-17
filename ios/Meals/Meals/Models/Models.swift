@@ -1,17 +1,5 @@
 import Foundation
 
-/// Ingredient names arrive from the server in canonical lowercase form
-/// ("olive oil" — see the backend's IngredientNameNormalizer); the identity is
-/// lowercase and must stay that way, so capitalisation happens only where a
-/// name is *shown*. First-letter upper reads right in both English ("Olive
-/// oil") and German ("Olivenöl") without guessing which word is a noun.
-extension String {
-    var displayName: String {
-        guard let first = first else { return self }
-        return first.uppercased() + dropFirst()
-    }
-}
-
 /// Server slot vocabulary (dinner/lunch/breakfast/other) shown as a section
 /// header or a caption. The raw value stays what is sent to the API.
 extension String {

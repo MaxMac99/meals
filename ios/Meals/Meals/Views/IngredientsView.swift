@@ -173,7 +173,7 @@ struct IngredientsView: View {
         VStack(alignment: .leading, spacing: 2) {
             HStack(spacing: 6) {
                 Text(item.aisle)
-                Text(item.name.displayName)
+                Text(item.name)
                 if !item.tier.badge.isEmpty {
                     Text(item.tier.badge)
                         .font(.caption2)
@@ -323,7 +323,7 @@ struct DuplicatesView: View {
                             .foregroundStyle(member.id == keeperId ? AnyShapeStyle(.tint) : AnyShapeStyle(.secondary))
                         VStack(alignment: .leading, spacing: 2) {
                             HStack(spacing: 6) {
-                                Text(member.name.displayName).foregroundStyle(.primary)
+                                Text(member.name).foregroundStyle(.primary)
                                 if member.id == group.keeper.id {
                                     Text("suggested")
                                         .font(.caption2)
@@ -343,14 +343,14 @@ struct DuplicatesView: View {
             Button {
                 Task { await merge(group: group, keeper: keeper) }
             } label: {
-                Text("Merge \(members.count - 1) into '\(keeper.name.displayName)'")
+                Text("Merge \(members.count - 1) into '\(keeper.name)'")
                     .fontWeight(.medium)
             }
             .disabled(isWorking)
         } footer: {
             if keeper.name != group.canonicalName {
                 Text(
-                    String(localized: "New recipes file this food under '\(group.canonicalName.displayName)', so a separate '\(group.canonicalName.displayName)' can creep back.")
+                    String(localized: "New recipes file this food under '\(group.canonicalName)', so a separate '\(group.canonicalName)' can creep back.")
                 )
             } else {
                 Text("The survivor keeps its own aisle, staple flag and verdict.")
@@ -362,11 +362,11 @@ struct DuplicatesView: View {
         Section {
             ForEach(Array(unfolded.enumerated()), id: \.offset) { _, entry in
                 VStack(alignment: .leading, spacing: 4) {
-                    Text(entry.ingredient.name.displayName)
+                    Text(entry.ingredient.name)
                     Text(ingredientMeta(entry.ingredient))
                         .font(.caption2)
                         .foregroundStyle(.secondary)
-                    Button("File under '\(entry.canonicalName.displayName)'") {
+                    Button("File under '\(entry.canonicalName)'") {
                         Task { await file(entry) }
                     }
                     .buttonStyle(.bordered)
@@ -455,7 +455,7 @@ struct MergeIntoSheet: View {
             List {
                 Section {
                     Text(
-                        String(localized: "Everything pointing at '\(source.name.displayName)' moves onto the ingredient you pick, then '\(source.name.displayName)' is deleted. Not reversible — merge spellings of the same food, not things bought together.")
+                        String(localized: "Everything pointing at '\(source.name)' moves onto the ingredient you pick, then '\(source.name)' is deleted. Not reversible — merge spellings of the same food, not things bought together.")
                     )
                     .font(.callout)
                     .foregroundStyle(.secondary)
@@ -466,7 +466,7 @@ struct MergeIntoSheet: View {
                         pendingTarget = item
                     } label: {
                         VStack(alignment: .leading, spacing: 2) {
-                            Text(item.name.displayName).foregroundStyle(.primary)
+                            Text(item.name).foregroundStyle(.primary)
                             Text(ingredientMeta(item))
                                 .font(.caption2)
                                 .foregroundStyle(.secondary)
@@ -486,7 +486,7 @@ struct MergeIntoSheet: View {
                     }
                 }
             }
-            .navigationTitle(String(localized: "Merge '\(source.name.displayName)' into…"))
+            .navigationTitle(String(localized: "Merge '\(source.name)' into…"))
             .navigationBarTitleDisplayMode(.inline)
             .searchable(text: $search, prompt: "Search ingredients")
             .toolbar {
@@ -497,7 +497,7 @@ struct MergeIntoSheet: View {
             .task { await load() }
             .onChange(of: search) { _, _ in Task { await load() } }
             .confirmationDialog(
-                String(localized: "Merge '\(source.name.displayName)' into '\(pendingTarget?.name.displayName ?? "")'? This can't be undone."),
+                String(localized: "Merge '\(source.name)' into '\(pendingTarget?.name ?? "")'? This can't be undone."),
                 isPresented: .init(get: { pendingTarget != nil }, set: { if !$0 { pendingTarget = nil } }),
                 titleVisibility: .visible
             ) {

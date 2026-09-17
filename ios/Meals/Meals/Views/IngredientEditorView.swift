@@ -48,7 +48,7 @@ struct IngredientEditorView: View {
                             Text("Ingredient")
                                 .foregroundStyle(Color.primary)
                             Spacer()
-                            Text(info.name.displayName)
+                            Text(info.name)
                                 .foregroundStyle(Color.secondary)
                             Image(systemName: "pencil")
                                 .font(.footnote.weight(.semibold))
@@ -133,7 +133,7 @@ struct IngredientEditorView: View {
                 ProgressView()
             }
         }
-        .navigationTitle(info?.name.displayName ?? String(localized: "Ingredient"))
+        .navigationTitle(info?.name ?? String(localized: "Ingredient"))
         .navigationBarTitleDisplayMode(.inline)
         .task { await load() }
         .sheet(isPresented: $showMerge) {
@@ -147,7 +147,7 @@ struct IngredientEditorView: View {
                 }
             }
         }
-        .alert("Rename '\(info?.name.displayName ?? "")'", isPresented: $showRename) {
+        .alert("Rename '\(info?.name ?? "")'", isPresented: $showRename) {
             TextField("Name", text: $renameDraft)
             Button("Cancel", role: .cancel) {}
             Button("Rename") {
@@ -165,7 +165,7 @@ struct IngredientEditorView: View {
             Text(renameNotice ?? "")
         }
         .confirmationDialog(
-            String(localized: "'\(renameDraft.trimmingCharacters(in: .whitespaces).displayName)' already exists as '\(pendingRenameTarget?.name.displayName ?? "")'. Merge '\(info?.name.displayName ?? "")' into it? It keeps its own aisle, staple flag and verdict. This can't be undone."),
+            String(localized: "'\(renameDraft.trimmingCharacters(in: .whitespaces))' already exists as '\(pendingRenameTarget?.name ?? "")'. Merge '\(info?.name ?? "")' into it? It keeps its own aisle, staple flag and verdict. This can't be undone."),
             isPresented: .init(get: { pendingRenameTarget != nil }, set: { if !$0 { pendingRenameTarget = nil } }),
             titleVisibility: .visible
         ) {
@@ -191,7 +191,7 @@ struct IngredientEditorView: View {
         do {
             if let target = try await session.api.ingredient(named: newName) {
                 if target.id == info.id {
-                    renameNotice = String(localized: "'\(newName.displayName)' is filed under '\(info.name.displayName)' — that's already this ingredient.")
+                    renameNotice = String(localized: "'\(newName)' is filed under '\(info.name)' — that's already this ingredient.")
                 } else {
                     pendingRenameTarget = target  // folding two foods together needs a yes
                 }

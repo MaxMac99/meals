@@ -168,7 +168,7 @@ struct EditableLineRow: View {
     var body: some View {
         Button(action: onEdit) {
             HStack {
-                Text(line.name.displayName)
+                Text(line.name)
                     .foregroundStyle(.primary)
                 Spacer()
                 Text(ShoppingListStore.displayQuantity(line.quantity, line.unit))

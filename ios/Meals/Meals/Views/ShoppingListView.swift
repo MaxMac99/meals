@@ -233,7 +233,7 @@ struct ShoppingItemRow: View {
                         if showsAisle {
                             Text(item.aisle)
                         }
-                        Text(item.name.displayName)
+                        Text(item.name)
                             .strikethrough(item.checked, color: .secondary)
                             .foregroundStyle(item.checked || item.excluded ? .secondary : .primary)
                         if item.excluded {
@@ -351,7 +351,7 @@ struct StapleCheckRow: View {
         } label: {
             HStack {
                 VStack(alignment: .leading, spacing: 2) {
-                    Text(item.name.displayName)
+                    Text(item.name)
                     if item.isNeededStaple {
                         Text("on the list — tap if you have it after all")
                             .font(.caption2)
@@ -466,7 +466,7 @@ struct ItemDetailSheet: View {
                     }
                 }
             }
-            .navigationTitle(item.name.displayName)
+            .navigationTitle(item.name)
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
