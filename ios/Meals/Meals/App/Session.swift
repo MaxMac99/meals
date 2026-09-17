@@ -23,9 +23,11 @@ final class Session {
     private(set) var user: UserProfile?
 
     /// Where this build stands against the server's expectations. `.required`
-    /// blocks the UI; there is no soft nudge — a working build works, and a
-    /// banner nagging on every foreground was noise nobody needed (the server
-    /// still hard-blocks a genuinely too-old build with 426).
+    /// takes over the whole window — MealsApp renders UpgradeRequiredView for
+    /// it and for nothing else, so the block is shown exactly when it applies.
+    /// There is no soft nudge: a working build works, and a banner nagging on
+    /// every foreground was noise nobody needed (the server still hard-blocks
+    /// a genuinely too-old build with 426).
     enum Upgrade: Equatable {
         case ok
         case required(detail: String, url: String?)
