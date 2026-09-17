@@ -151,6 +151,32 @@ ios-testflight: ios-export-options ## Archive, export, and upload the iOS app to
 	xcrun altool --upload-app -f ./build/export/Meals.ipa -t ios \
 		--apiKey $(ASC_KEY_ID) --apiIssuer $(ASC_ISSUER)
 
+.PHONY: ios-release
+ios-release: ## Archive a Release build and export a development-signed Meals.ipa (needs MEALS_DEVELOPMENT_TEAM in ios/.env)
+	@test -n "$(MEALS_DEVELOPMENT_TEAM)" || \
+		{ echo "MEALS_DEVELOPMENT_TEAM must be set — see the comment above ios-testflight in the Makefile"; exit 1; }
+	cd $(IOS_DIR) && xcodegen generate && \
+	xcodebuild archive -project Meals.xcodeproj -scheme Meals \
+		-archivePath ./build/Meals.xcarchive -destination 'generic/platform=iOS' \
+		-allowProvisioningUpdates 2>&1 | grep -E "error:|ARCHIVE" && \
+	printf '%s\n' \
+		'<?xml version="1.0" encoding="UTF-8"?>' \
+		'<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">' \
+		'<plist version="1.0">' \
+		'<dict>' \
+		'    <key>method</key>' \
+		'    <string>development</string>' \
+		'    <key>signingStyle</key>' \
+		'    <string>automatic</string>' \
+		'    <key>teamID</key>' \
+		'    <string>$(MEALS_DEVELOPMENT_TEAM)</string>' \
+		'</dict>' \
+		'</plist>' \
+		> build/ExportOptions-dev.plist && \
+	xcodebuild -exportArchive -archivePath ./build/Meals.xcarchive -exportPath ./build/export \
+		-exportOptionsPlist build/ExportOptions-dev.plist -allowProvisioningUpdates 2>&1 | grep -Ei "error|EXPORT"
+	@echo "ipa: $(IOS_DIR)/build/export/Meals.ipa"
+
 # ------------------------------------------------------------------ database
 
 .PHONY: migrate
