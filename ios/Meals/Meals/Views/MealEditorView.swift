@@ -90,7 +90,7 @@ struct MealEditorView: View {
     /// placeholder so the default is visible before saving.
     private var namePlaceholder: String {
         let fallback = Self.resolvedName(typed: "", selectedRecipes: selectedRecipes, library: recipeStore.recipes)
-        return fallback.isEmpty ? "Meal name (e.g. Cottage pie with peas)" : fallback
+        return fallback.isEmpty ? String(localized: "Meal name (e.g. Cottage pie with peas)") : fallback
     }
 
     var body: some View {
@@ -98,7 +98,7 @@ struct MealEditorView: View {
             Section {
                 TextField(namePlaceholder, text: $name)
                 Picker("Slot", selection: $slot) {
-                    ForEach(slots, id: \.self) { Text($0.capitalized) }
+                    ForEach(slots, id: \.self) { Text($0.slotLabel) }
                 }
             }
 
@@ -294,11 +294,15 @@ struct MealEditorView: View {
     private func scaleLabel(_ recipe: RecipeSummary) -> String {
         let scale = scales[recipe.id] ?? 1
         let multiple = "×\(IngredientLineEditor.amountText(scale))"
-        guard let servings = recipe.servings else { return "\(multiple) — batch cooking" }
-        let feeds = "Serves \(IngredientLineEditor.amountText((Double(servings) * scale).rounded()))"
+        guard let servings = recipe.servings else {
+            return String(localized: "×\(multiple) — batch cooking")
+        }
+        let feeds = String(localized: "Serves \(IngredientLineEditor.amountText((Double(servings) * scale).rounded()))")
         // The multiple is what the shopping list works in, so keep it visible
         // once it stops being ×1.
-        return scale == 1 ? "\(feeds) — the recipe's own" : "\(feeds) — \(multiple)"
+        return scale == 1
+            ? String(localized: "\(feeds) — the recipe's own")
+            : String(localized: "\(feeds) — \(multiple)")
     }
 
     private func addLooseLine() {

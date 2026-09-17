@@ -52,6 +52,11 @@ targets:
           - UIInterfaceOrientationPortraitUpsideDown
           - UIInterfaceOrientationLandscapeLeft
           - UIInterfaceOrientationLandscapeRight
+        # The app follows the device language; the German catalogue ships in
+        # Meals/Resources/Localizable.xcstrings.
+        CFBundleLocalizations:
+          - en
+          - de
         NSAppTransportSecurity:
           NSAllowsLocalNetworking: true
     settings:

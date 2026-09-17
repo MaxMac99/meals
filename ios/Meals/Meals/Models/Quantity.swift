@@ -13,7 +13,8 @@ enum MealsUnits {
 
     /// Units the API rejects, with the conversion it will quote back. Checked
     /// as the user types so the correction arrives at the field rather than
-    /// after the whole meal or recipe fails to save.
+    /// after the whole meal or recipe fails to save. Values are catalog keys —
+    /// the conversions are universal, the one free-text sentence translates.
     static let rejected: [String: String] = [
         "tsp": "1 tsp = 5 ml",
         "teaspoon": "1 tsp = 5 ml",
@@ -32,7 +33,8 @@ enum MealsUnits {
     /// nil when the unit is fine; otherwise the conversion to show.
     static func rejection(for unit: String?) -> String? {
         guard let unit, !unit.isEmpty else { return nil }
-        return rejected[unit.lowercased().trimmingCharacters(in: .whitespaces)]
+        guard let key = rejected[unit.lowercased().trimmingCharacters(in: .whitespaces)] else { return nil }
+        return String(localized: String.LocalizationValue(key))
     }
 }
 

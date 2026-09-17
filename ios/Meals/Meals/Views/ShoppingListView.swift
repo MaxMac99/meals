@@ -158,12 +158,12 @@ struct ShoppingListView: View {
 
     private var emptyHint: String {
         if store.cache == nil {
-            return "Pull to refresh once you're online — after that the list works offline."
+            return String(localized: "Pull to refresh once you're online — after that the list works offline.")
         }
         if !store.checkedItems.isEmpty {
-            return "Everything's in the basket. Finish the shop from the menu, or open the basket below to undo one."
+            return String(localized: "Everything's in the basket. Finish the shop from the menu, or open the basket below to undo one.")
         }
-        return "Add meals to the plan or quick-add items above."
+        return String(localized: "Add meals to the plan or quick-add items above.")
     }
 
     private func quickAdd() {
@@ -233,7 +233,7 @@ struct ShoppingItemRow: View {
                         if showsAisle {
                             Text(item.aisle)
                         }
-                        Text(item.name)
+                        Text(item.name.displayName)
                             .strikethrough(item.checked, color: .secondary)
                             .foregroundStyle(item.checked || item.excluded ? .secondary : .primary)
                         if item.excluded {
@@ -351,7 +351,7 @@ struct StapleCheckRow: View {
         } label: {
             HStack {
                 VStack(alignment: .leading, spacing: 2) {
-                    Text(item.name)
+                    Text(item.name.displayName)
                     if item.isNeededStaple {
                         Text("on the list — tap if you have it after all")
                             .font(.caption2)
@@ -466,7 +466,7 @@ struct ItemDetailSheet: View {
                     }
                 }
             }
-            .navigationTitle(item.name)
+            .navigationTitle(item.name.displayName)
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
@@ -491,7 +491,7 @@ struct ItemDetailSheet: View {
             } label: {
                 HStack {
                     VStack(alignment: .leading, spacing: 2) {
-                        Text(source.recipeTitle ?? "Recipe")
+                        Text(source.recipeTitle ?? String(localized: "Recipe"))
                         if let meal = source.mealName {
                             Text("in \(meal)").font(.caption).foregroundStyle(.secondary)
                         }
@@ -503,7 +503,7 @@ struct ItemDetailSheet: View {
         } else {
             HStack {
                 VStack(alignment: .leading, spacing: 2) {
-                    Text(source.mealName ?? "A meal")
+                    Text(source.mealName ?? String(localized: "A meal"))
                     Text("on the side").font(.caption).foregroundStyle(.secondary)
                 }
                 Spacer()

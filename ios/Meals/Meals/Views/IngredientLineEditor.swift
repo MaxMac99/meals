@@ -9,7 +9,7 @@ import SwiftUI
 struct IngredientLineEditor: View {
     @Environment(\.dismiss) private var dismiss
 
-    let title: String
+    let title: LocalizedStringKey
     let onSave: (LooseLine) -> Void
 
     @State private var name: String
@@ -18,7 +18,7 @@ struct IngredientLineEditor: View {
     @State private var showCustomUnit = false
     @FocusState private var nameFocused: Bool
 
-    init(line: LooseLine?, title: String, onSave: @escaping (LooseLine) -> Void) {
+    init(line: LooseLine?, title: LocalizedStringKey, onSave: @escaping (LooseLine) -> Void) {
         self.title = title
         self.onSave = onSave
         _name = State(initialValue: line?.name ?? "")
@@ -29,7 +29,9 @@ struct IngredientLineEditor: View {
     /// The conversion the API would refuse with, shown here instead — at the
     /// field, before the whole meal fails to save.
     private var unitWarning: String? {
-        MealsUnits.rejection(for: unit).map { "\($0). The list only takes metric or a count." }
+        MealsUnits.rejection(for: unit).map {
+            String(localized: "\($0). The list only takes metric or a count.")
+        }
     }
 
     private var canSave: Bool {
@@ -132,15 +134,27 @@ struct IngredientLineEditor: View {
 /// The shopping list is the only screen that can promise changes will sync,
 /// because it's the only one with a queue behind it (Q11 / #33).
 struct OfflineBanner: View {
-    let what: String
+    enum What {
+        case plan
+        case library
+    }
+
+    let what: What
 
     var body: some View {
-        Label("Offline — showing the last saved \(what)", systemImage: "wifi.slash")
-            .font(.footnote)
-            .foregroundStyle(.secondary)
-            .frame(maxWidth: .infinity)
-            .padding(.vertical, 6)
-            .background(.bar)
+        Label {
+            switch what {
+            case .plan: Text("Offline — showing the last saved plan")
+            case .library: Text("Offline — showing the last saved library")
+            }
+        } icon: {
+            Image(systemName: "wifi.slash")
+        }
+        .font(.footnote)
+        .foregroundStyle(.secondary)
+        .frame(maxWidth: .infinity)
+        .padding(.vertical, 6)
+        .background(.bar)
     }
 }
 
@@ -154,7 +168,8 @@ struct EditableLineRow: View {
     var body: some View {
         Button(action: onEdit) {
             HStack {
-                Text(line.name).foregroundStyle(.primary)
+                Text(line.name.displayName)
+                    .foregroundStyle(.primary)
                 Spacer()
                 Text(ShoppingListStore.displayQuantity(line.quantity, line.unit))
                     .foregroundStyle(.secondary)

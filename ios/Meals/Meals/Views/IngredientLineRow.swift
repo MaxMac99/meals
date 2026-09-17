@@ -20,7 +20,7 @@ struct IngredientLineRow: View {
         } label: {
             HStack(spacing: 6) {
                 Text(line.aisle)
-                Text(line.name)
+                Text(line.name.displayName)
                 if !line.tier.badge.isEmpty {
                     Text(line.tier.badge)
                         .font(.caption2)

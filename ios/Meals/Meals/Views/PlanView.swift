@@ -26,7 +26,7 @@ struct PlanView: View {
             // Stale data is useful; stale data mistaken for current isn't (#33).
             .safeAreaInset(edge: .top) {
                 if store.isOffline {
-                    OfflineBanner(what: "plan")
+                    OfflineBanner(what: .plan)
                 }
             }
             .navigationTitle(store.plan?.label ?? "Plan")
@@ -121,7 +121,7 @@ struct PlanView: View {
                 }
             }
             ForEach(plan.slots, id: \.slot) { group in
-                Section(group.slot.capitalized) {
+                Section(group.slot.slotLabel) {
                     ForEach(group.meals) { planMeal in
                         PlanMealRow(planMeal: planMeal)
                     }
@@ -203,12 +203,25 @@ struct NewPlanSheet: View {
             defer { isSaving = false }
             let cleaned = label.trimmingCharacters(in: .whitespaces)
             await store.createPlan(
-                label: cleaned.isEmpty ? "This week's options" : cleaned,
+                label: cleaned.isEmpty ? String(localized: "This week's options") : cleaned,
                 copyFrom: copyFrom?.id
             )
             dismiss()
         }
     }
+}
+
+/// "archived · 3 meals" — split into whole localised sentences per status so
+/// the German plural doesn't have to fight the English one.
+private func planStatusLabel(status: String, mealCount: Int) -> String {
+    if status == "archived" {
+        return mealCount == 1
+            ? String(localized: "archived · 1 meal")
+            : String(localized: "archived · \(mealCount) meals")
+    }
+    return mealCount == 1
+        ? String(localized: "active · 1 meal")
+        : String(localized: "active · \(mealCount) meals")
 }
 
 /// Q4's history: past (and other active) plans, and one-tap "again".
@@ -226,7 +239,7 @@ struct PastPlansSheet: View {
                         HStack {
                             VStack(alignment: .leading, spacing: 2) {
                                 Text(plan.label)
-                                Text("\(plan.status == "archived" ? "archived · " : "active · ")\(plan.mealCount) meal\(plan.mealCount == 1 ? "" : "s")")
+                                Text(planStatusLabel(status: plan.status, mealCount: plan.mealCount))
                                     .font(.caption)
                                     .foregroundStyle(.secondary)
                             }
@@ -234,7 +247,7 @@ struct PastPlansSheet: View {
                             if plan.status == "archived" && plan.mealCount > 0 {
                                 Button("Again") {
                                     Task {
-                                        await store.createPlan(label: "\(plan.label) (again)", copyFrom: plan.id)
+                                        await store.createPlan(label: String(localized: "\(plan.label) (again)"), copyFrom: plan.id)
                                         dismiss()
                                     }
                                 }
@@ -285,7 +298,7 @@ struct PastPlanDetailView: View {
                         }
                     }
                     ForEach(plan.slots, id: \.slot) { group in
-                        Section(group.slot.capitalized) {
+                        Section(group.slot.slotLabel) {
                             ForEach(group.meals) { planMeal in
                                 HStack {
                                     Text(planMeal.meal.name)
@@ -421,7 +434,7 @@ struct PlanMealRow: View {
             parts.append(recipes.map(\.title).joined(separator: ", "))
         }
         if let minutes = recipes.compactMap(\.totalMinutes).max() {
-            parts.append("\(minutes) min")
+            parts.append(String(localized: "\(minutes) min"))
         }
         return parts.isEmpty ? nil : parts.joined(separator: " · ")
     }

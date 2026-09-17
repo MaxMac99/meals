@@ -51,7 +51,7 @@ struct RecipesView: View {
             }
             .safeAreaInset(edge: .top) {
                 if store.isOffline && !store.recipes.isEmpty {
-                    OfflineBanner(what: "library")
+                    OfflineBanner(what: .library)
                 }
             }
             .navigationTitle("Recipes")
@@ -232,7 +232,7 @@ struct RecipeDetailView: View {
         else { return nil }
         let multiple = "×\(IngredientLineEditor.amountText(scale))"
         guard let feeds = link.scaledServings else { return multiple }
-        return "\(multiple) — serves \(feeds)"
+        return String(localized: "\(multiple) — serves \(feeds)")
     }
 
     var body: some View {
@@ -283,13 +283,13 @@ struct RecipeDetailView: View {
                     LabeledContent("This meal", value: scaled)
                 }
                 if let prep = recipe.prepMinutes {
-                    LabeledContent("Prep", value: "\(prep) min")
+                    LabeledContent("Prep", value: String(localized: "\(prep) min"))
                 }
                 if let cook = recipe.cookMinutes {
-                    LabeledContent("Cook", value: "\(cook) min")
+                    LabeledContent("Cook", value: String(localized: "\(cook) min"))
                 }
                 if let times = recipe.timesCooked {
-                    LabeledContent("Cooked", value: times == 0 ? "never" : "\(times)×")
+                    LabeledContent("Cooked", value: times == 0 ? String(localized: "never") : "\(times)×")
                 }
                 if let last = CookedHistory.monthLabel(recipe.lastCookedAt) {
                     LabeledContent("Last cooked", value: last)
@@ -368,7 +368,7 @@ struct RecipeDetailView: View {
                             if let meal = await planStore.addRecipe(recipe) {
                                 addedMealName = meal.name
                             } else {
-                                addError = planStore.errorMessage ?? "Couldn't reach the server."
+                                addError = planStore.errorMessage ?? String(localized: "Couldn't reach the server.")
                                 planStore.errorMessage = nil
                             }
                         }
@@ -417,7 +417,7 @@ struct RecipeDetailView: View {
             Button("OK") { addedMealName = nil }
         } message: {
             // Naming the plan is what tells you a new one was just started.
-            Text("\(addedMealName ?? "") is on '\(planStore.plan?.label ?? "the plan")' and its ingredients are on the shopping list.")
+            Text("\(addedMealName ?? "") is on '\(planStore.plan?.label ?? String(localized: "the plan"))' and its ingredients are on the shopping list.")
         }
         .alert(
             "Couldn't add to the plan",
@@ -509,8 +509,8 @@ struct IngestSheet: View {
                 let result = try await store.ingest(url: url)
                 succeeded = true
                 message = result.cached
-                    ? "Already in the library: \(result.recipe.title)"
-                    : "Added: \(result.recipe.title)"
+                    ? String(localized: "Already in the library: \(result.recipe.title)")
+                    : String(localized: "Added: \(result.recipe.title)")
             } catch {
                 succeeded = false
                 message = error.localizedDescription

@@ -28,11 +28,7 @@ struct FreezerView: View {
                 } header: {
                     Text("Oldest first — eat from the top")
                 } footer: {
-                    Text(
-                        "\(stock.totalPortions) portion\(stock.totalPortions == 1 ? "" : "s") in "
-                            + "\(stock.items.count) batch\(stock.items.count == 1 ? "" : "es"). "
-                            + "Swipe right on a batch when you take a portion out."
-                    )
+                    Text(Self.stockSummary(totalPortions: stock.totalPortions, batches: stock.items.count))
                 }
             }
         }
@@ -44,8 +40,7 @@ struct FreezerView: View {
                     "Nothing in the freezer",
                     systemImage: "snowflake",
                     description: Text(
-                        "When you batch-cook, put the spare portions here and this becomes the answer "
-                            + "to “what's for tea?”."
+                        "When you batch-cook, put the spare portions here and this becomes the answer to “what's for tea?”."
                     )
                 )
             } else if stock == nil {
@@ -93,9 +88,21 @@ struct FreezerView: View {
         }
     }
 
+    /// "4 portions in 2 batches. Swipe right…" — plural handled per language
+    /// rather than an English s-suffix glued onto a translated noun.
+    static func stockSummary(totalPortions: Int, batches: Int) -> String {
+        let portions = totalPortions == 1
+            ? String(localized: "1 portion")
+            : String(localized: "\(totalPortions) portions")
+        let batch = batches == 1
+            ? String(localized: "1 batch")
+            : String(localized: "\(batches) batches")
+        return String(localized: "\(portions) in \(batch). Swipe right on a batch when you take a portion out.")
+    }
+
     private var removeConfirmTitle: String {
         guard let item = pendingRemove else { return "" }
-        return "Take the \(item.label) out? Its \(item.portionsText) come off the tab — for something binned or given away. Eating one is the swipe."
+        return String(localized: "Take the \(item.label) out? Its \(item.portionsText) come off the tab — for something binned or given away. Eating one is the swipe.")
     }
 
     private func row(_ item: FreezerItem) -> some View {
@@ -137,7 +144,7 @@ struct FreezerView: View {
     private func subtitle(_ item: FreezerItem) -> String {
         var parts = [item.frozenText]
         if let note = item.note, !note.isEmpty { parts.append(note) }
-        if item.mealId == nil && item.recipeId == nil { parts.append("not from a recipe here") }
+        if item.mealId == nil && item.recipeId == nil { parts.append(String(localized: "not from a recipe here")) }
         return parts.joined(separator: " · ")
     }
 
@@ -194,6 +201,9 @@ struct AddToFreezerSheet: View {
         case recipe = "A recipe"
         case text = "Something else"
         var id: String { rawValue }
+
+        /// The raw value stays the identifier; the label is what's shown.
+        var label: String { String(localized: String.LocalizationValue(rawValue)) }
     }
 
     @Environment(Session.self) private var session
@@ -222,7 +232,7 @@ struct AddToFreezerSheet: View {
                 Section {
                     Picker("What is it", selection: $kind) {
                         ForEach(Kind.allCases) { kind in
-                            Text(kind.rawValue).tag(kind)
+                            Text(kind.label).tag(kind)
                         }
                     }
                     .pickerStyle(.segmented)
@@ -255,7 +265,7 @@ struct AddToFreezerSheet: View {
                         ForEach(filteredRecipes) { recipe in
                             pickRow(
                                 name: recipe.title,
-                                detail: recipe.servings.map { "serves \($0)" },
+                                detail: recipe.servings.map { String(localized: "serves \($0)") },
                                 picked: pickedRecipe?.id == recipe.id
                             ) {
                                 pickedRecipe = recipe

@@ -154,7 +154,7 @@ final class ShoppingListStore {
                         ingredientId: id,
                         name: canonical,
                         aisle: "❓",
-                        aisleLabel: "Unknown",
+                        aisleLabel: String(localized: "Unknown"),
                         isStaple: false,
                         quantity: quantity,
                         unit: unit,

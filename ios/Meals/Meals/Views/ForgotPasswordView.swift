@@ -34,10 +34,10 @@ struct ForgotPasswordView: View {
 
     private var validationMessage: String? {
         if !newPassword.isEmpty && newPassword.count < Self.minimumLength {
-            return "New password must be at least \(Self.minimumLength) characters."
+            return String(localized: "New password must be at least \(Self.minimumLength) characters.")
         }
         if !confirmPassword.isEmpty && confirmPassword != newPassword {
-            return "The new passwords don't match."
+            return String(localized: "The new passwords don't match.")
         }
         return nil
     }
@@ -81,9 +81,7 @@ struct ForgotPasswordView: View {
                         Text("Check your email")
                     } footer: {
                         Text(
-                            "If \(email) has an account, a code is on its way. It works once "
-                                + "and expires shortly. At least \(Self.minimumLength) characters "
-                                + "for the new password; your other devices will be signed out."
+                            String(localized: "If \(email) has an account, a code is on its way. It works once and expires shortly. At least \(Self.minimumLength) characters for the new password; your other devices will be signed out.")
                         )
                     }
                 }

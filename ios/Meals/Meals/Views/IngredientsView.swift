@@ -152,7 +152,7 @@ struct IngredientsView: View {
         case .aisle:
             return grouped { "\($0.aisle) \($0.aisleLabel)" }
         case .valueTier:
-            return grouped { $0.tier == .any ? "No opinion" : "\($0.tier.badge) \($0.tier.short)" }
+            return grouped { $0.tier == .any ? String(localized: "No opinion") : "\($0.tier.badge) \($0.tier.short)" }
         }
     }
 
@@ -173,7 +173,7 @@ struct IngredientsView: View {
         VStack(alignment: .leading, spacing: 2) {
             HStack(spacing: 6) {
                 Text(item.aisle)
-                Text(item.name)
+                Text(item.name.displayName)
                 if !item.tier.badge.isEmpty {
                     Text(item.tier.badge)
                         .font(.caption2)
@@ -234,7 +234,7 @@ struct IngredientsView: View {
 /// aisle/staple/verdict survives (the keeper's) and whose is lost.
 private func ingredientMeta(_ item: IngredientInfo) -> String {
     var parts = ["\(item.aisle) \(item.aisleLabel)"]
-    if item.isStaple { parts.append("staple") }
+    if item.isStaple { parts.append(String(localized: "staple")) }
     if item.tier != .any { parts.append("\(item.tier.badge) \(item.tier.short.lowercased())") }
     if let note = item.valueNote, !note.isEmpty { parts.append("\u{201C}\(note)\u{201D}") }
     return parts.joined(separator: " · ")
@@ -265,8 +265,7 @@ struct DuplicatesView: View {
                             "Catalogue is clean",
                             systemImage: "sparkles",
                             description: Text(
-                                "No duplicate names found. Spotted a pair this can't see, like "
-                                    + "'beef mince' and 'minced beef'? Open the ingredient and merge it from there."
+                                "No duplicate names found. Spotted a pair this can't see, like 'beef mince' and 'minced beef'? Open the ingredient and merge it from there."
                             )
                         )
                     }
@@ -324,7 +323,7 @@ struct DuplicatesView: View {
                             .foregroundStyle(member.id == keeperId ? AnyShapeStyle(.tint) : AnyShapeStyle(.secondary))
                         VStack(alignment: .leading, spacing: 2) {
                             HStack(spacing: 6) {
-                                Text(member.name).foregroundStyle(.primary)
+                                Text(member.name.displayName).foregroundStyle(.primary)
                                 if member.id == group.keeper.id {
                                     Text("suggested")
                                         .font(.caption2)
@@ -344,15 +343,14 @@ struct DuplicatesView: View {
             Button {
                 Task { await merge(group: group, keeper: keeper) }
             } label: {
-                Text("Merge \(members.count - 1) into '\(keeper.name)'")
+                Text("Merge \(members.count - 1) into '\(keeper.name.displayName)'")
                     .fontWeight(.medium)
             }
             .disabled(isWorking)
         } footer: {
             if keeper.name != group.canonicalName {
                 Text(
-                    "New recipes file this food under '\(group.canonicalName)', "
-                        + "so a separate '\(group.canonicalName)' can creep back."
+                    String(localized: "New recipes file this food under '\(group.canonicalName.displayName)', so a separate '\(group.canonicalName.displayName)' can creep back.")
                 )
             } else {
                 Text("The survivor keeps its own aisle, staple flag and verdict.")
@@ -364,11 +362,11 @@ struct DuplicatesView: View {
         Section {
             ForEach(Array(unfolded.enumerated()), id: \.offset) { _, entry in
                 VStack(alignment: .leading, spacing: 4) {
-                    Text(entry.ingredient.name)
+                    Text(entry.ingredient.name.displayName)
                     Text(ingredientMeta(entry.ingredient))
                         .font(.caption2)
                         .foregroundStyle(.secondary)
-                    Button("File under '\(entry.canonicalName)'") {
+                    Button("File under '\(entry.canonicalName.displayName)'") {
                         Task { await file(entry) }
                     }
                     .buttonStyle(.bordered)
@@ -381,8 +379,7 @@ struct DuplicatesView: View {
             Text("Old spellings")
         } footer: {
             Text(
-                "Stored under a name a new recipe wouldn't use, with nothing to merge into. "
-                    + "Filing one moves it to the modern name, keeping its aisle, staple flag and verdict."
+                String(localized: "Stored under a name a new recipe wouldn't use, with nothing to merge into. Filing one moves it to the modern name, keeping its aisle, staple flag and verdict.")
             )
         }
     }
@@ -458,9 +455,7 @@ struct MergeIntoSheet: View {
             List {
                 Section {
                     Text(
-                        "Everything pointing at '\(source.name)' moves onto the ingredient you pick, "
-                            + "then '\(source.name)' is deleted. Not reversible — merge spellings of the "
-                            + "same food, not things bought together."
+                        String(localized: "Everything pointing at '\(source.name.displayName)' moves onto the ingredient you pick, then '\(source.name.displayName)' is deleted. Not reversible — merge spellings of the same food, not things bought together.")
                     )
                     .font(.callout)
                     .foregroundStyle(.secondary)
@@ -471,7 +466,7 @@ struct MergeIntoSheet: View {
                         pendingTarget = item
                     } label: {
                         VStack(alignment: .leading, spacing: 2) {
-                            Text(item.name).foregroundStyle(.primary)
+                            Text(item.name.displayName).foregroundStyle(.primary)
                             Text(ingredientMeta(item))
                                 .font(.caption2)
                                 .foregroundStyle(.secondary)
@@ -491,7 +486,7 @@ struct MergeIntoSheet: View {
                     }
                 }
             }
-            .navigationTitle("Merge '\(source.name)' into…")
+            .navigationTitle(String(localized: "Merge '\(source.name.displayName)' into…"))
             .navigationBarTitleDisplayMode(.inline)
             .searchable(text: $search, prompt: "Search ingredients")
             .toolbar {
@@ -502,7 +497,7 @@ struct MergeIntoSheet: View {
             .task { await load() }
             .onChange(of: search) { _, _ in Task { await load() } }
             .confirmationDialog(
-                "Merge '\(source.name)' into '\(pendingTarget?.name ?? "")'? This can't be undone.",
+                String(localized: "Merge '\(source.name.displayName)' into '\(pendingTarget?.name.displayName ?? "")'? This can't be undone."),
                 isPresented: .init(get: { pendingTarget != nil }, set: { if !$0 { pendingTarget = nil } }),
                 titleVisibility: .visible
             ) {

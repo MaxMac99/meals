@@ -24,9 +24,7 @@ struct APITokensView: View {
                 }
             } footer: {
                 Text(
-                    "A token lets an assistant use this server with everything your account "
-                        + "can see and do. The skill is its operating manual; the prompt pack "
-                        + "is a paste-anywhere version."
+                    String(localized: "A token lets an assistant use this server with everything your account can see and do. The skill is its operating manual; the prompt pack is a paste-anywhere version.")
                 )
             }
 
@@ -60,7 +58,7 @@ struct APITokensView: View {
             }
         }
         .confirmationDialog(
-            "Revoke '\(pendingRevoke?.label ?? "this token")'? Whatever AI client holds it stops working immediately.",
+            String(localized: "Revoke '\(pendingRevoke?.label ?? String(localized: "this token"))'? Whatever AI client holds it stops working immediately."),
             isPresented: .init(get: { pendingRevoke != nil }, set: { if !$0 { pendingRevoke = nil } }),
             titleVisibility: .visible
         ) {
@@ -74,7 +72,7 @@ struct APITokensView: View {
 
     private func tokenRow(_ token: APIToken) -> some View {
         VStack(alignment: .leading, spacing: 2) {
-            Text(token.label ?? "Unlabelled token")
+            Text(token.label ?? String(localized: "Unlabelled token"))
             Text(detailLine(token))
                 .font(.caption)
                 .foregroundStyle(.secondary)
@@ -90,16 +88,16 @@ struct APITokensView: View {
 
     private func detailLine(_ token: APIToken) -> String {
         var parts: [String] = []
-        if let created = TimestampLabel.day(token.createdAt) { parts.append("created \(created)") }
+        if let created = TimestampLabel.day(token.createdAt) { parts.append(String(localized: "created \(created)")) }
         if let used = TimestampLabel.day(token.lastUsedAt) {
-            parts.append("last used \(used)")
+            parts.append(String(localized: "last used \(used)"))
         } else {
-            parts.append("never used")
+            parts.append(String(localized: "never used"))
         }
         if let expires = TimestampLabel.day(token.expiresAt) {
-            parts.append("expires \(expires)")
+            parts.append(String(localized: "expires \(expires)"))
         } else {
-            parts.append("never expires")
+            parts.append(String(localized: "never expires"))
         }
         return parts.joined(separator: " · ")
     }
@@ -143,6 +141,11 @@ struct CreateTokenSheet: View {
         ("Never", nil), ("In 30 days", 30), ("In 90 days", 90), ("In a year", 365),
     ]
 
+    /// The option labels are catalog keys, resolved at render time.
+    private static func localizedLabel(_ key: String) -> String {
+        String(localized: String.LocalizationValue(key))
+    }
+
     var body: some View {
         NavigationStack {
             Form {
@@ -157,20 +160,19 @@ struct CreateTokenSheet: View {
                             Label("Share token", systemImage: "square.and.arrow.up")
                         }
                     } footer: {
-                        Text("Give it to your assistant as a Bearer token. Shown once — the server keeps only a hash.")
+                        Text(String(localized: "Give it to your assistant as a Bearer token. Shown once — the server keeps only a hash."))
                     }
                 } else {
                     Section {
                         TextField("Label (e.g. Claude on the laptop)", text: $label)
                         Picker("Expires", selection: $expiresInDays) {
                             ForEach(Self.expiryOptions, id: \.days) { option in
-                                Text(option.label).tag(option.days)
+                                Text(Self.localizedLabel(option.label)).tag(option.days)
                             }
                         }
                     } footer: {
                         Text("The label is how you'll recognise it in the list when it's time to revoke it.")
                     }
-
                     if let errorMessage {
                         Section {
                             Text(errorMessage).foregroundStyle(.red).font(.callout)

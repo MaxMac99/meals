@@ -21,8 +21,8 @@ struct SupermarketsView: View {
         List {
             Section {
                 pickRow(
-                    name: "Default order",
-                    detail: "the built-in walk, fruit & veg first",
+                    name: String(localized: "Default order"),
+                    detail: String(localized: "the built-in walk, fruit & veg first"),
                     isActive: !markets.contains(where: \.isActive)
                 ) {
                     await activate(nil)
@@ -34,8 +34,7 @@ struct SupermarketsView: View {
                 Text("Shopping at")
             } footer: {
                 Text(
-                    "The shopping list walks the aisles in the ticked store's order — every "
-                        + "device (and your AI) sorts for it. Tap a store's aisles to arrange its walk."
+                    String(localized: "The shopping list walks the aisles in the ticked store's order — every device (and your AI) sorts for it. Tap a store's aisles to arrange its walk.")
                 )
             }
 
@@ -57,8 +56,7 @@ struct SupermarketsView: View {
                     "No stores saved",
                     systemImage: "storefront",
                     description: Text(
-                        "The list uses the built-in aisle order until you save the stores "
-                            + "you actually shop at and arrange their walks."
+                        "The list uses the built-in aisle order until you save the stores you actually shop at and arrange their walks."
                     )
                 )
                 .allowsHitTesting(false)  // the Add button underneath must stay tappable
@@ -103,8 +101,8 @@ struct SupermarketsView: View {
     private var deleteConfirmTitle: String {
         guard let market = pendingDelete else { return "" }
         return market.isActive
-            ? "Delete '\(market.name)'? Its saved aisle order goes with it and the list goes back to the default order."
-            : "Delete '\(market.name)'? Its saved aisle order goes with it."
+            ? String(localized: "Delete '\(market.name)'? Its saved aisle order goes with it and the list goes back to the default order.")
+            : String(localized: "Delete '\(market.name)'? Its saved aisle order goes with it.")
     }
 
     private func pickRow(
@@ -146,7 +144,7 @@ struct SupermarketsView: View {
                     .foregroundStyle(.tint)
             }
             .buttonStyle(.borderless)  // keep the row tap = make active
-            .accessibilityLabel("Edit \(market.name)")
+            .accessibilityLabel(String(localized: "Edit \(market.name)"))
         }
         .swipeActions(edge: .trailing, allowsFullSwipe: false) {
             Button(role: .destructive) {
@@ -242,7 +240,7 @@ struct SupermarketEditorSheet: View {
                     ForEach(order, id: \.self) { emoji in
                         HStack {
                             Text(emoji)
-                            Text(labels[emoji] ?? "Unknown")
+                            Text(labels[emoji] ?? String(localized: "Unknown"))
                         }
                     }
                     .onMove { from, to in
@@ -253,7 +251,6 @@ struct SupermarketEditorSheet: View {
                 } footer: {
                     Text("First aisle you meet at the top; the shopping list walks it top to bottom.")
                 }
-
                 if let errorMessage {
                     Section {
                         Text(errorMessage).foregroundStyle(.red).font(.callout)

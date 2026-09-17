@@ -32,9 +32,7 @@ struct DeleteAccountView: View {
             Form {
                 Section {
                     Text(
-                        "Deleting your account removes your sign-in and every API token you've "
-                            + "created. If you're the last person in your household, its recipes, "
-                            + "meals, plans, shopping list and cooked history are deleted too."
+                        String(localized: "Deleting your account removes your sign-in and every API token you've created. If you're the last person in your household, its recipes, meals, plans, shopping list and cooked history are deleted too.")
                     )
                     .font(.callout)
                 } header: {

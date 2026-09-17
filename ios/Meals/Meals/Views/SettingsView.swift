@@ -85,9 +85,7 @@ struct SettingsView: View {
             Text("Household")
         } footer: {
             Text(
-                "Everyone in a household shares its recipes, plan and shopping list, and can change "
-                    + "all of it. Who is in the household is the lead's to decide — the member it's "
-                    + "billed to."
+                String(localized: "Everyone in a household shares its recipes, plan and shopping list, and can change all of it. Who is in the household is the lead's to decide — the member it's billed to.")
             )
         }
     }
@@ -103,8 +101,7 @@ struct SettingsView: View {
             Text("Shopping")
         } footer: {
             Text(
-                "Save the stores you shop at and arrange each one's aisles the way you "
-                    + "meet them — the shopping list walks whichever store is picked."
+                String(localized: "Save the stores you shop at and arrange each one's aisles the way you meet them — the shopping list walks whichever store is picked.")
             )
         }
     }
@@ -208,8 +205,7 @@ struct InviteSheet: View {
 
                     Section {
                         Text(
-                            "Anyone with this code can read and change everything in your household. "
-                                + "Send it the way you'd send a password — and it isn't shown again."
+                            String(localized: "Anyone with this code can read and change everything in your household. Send it the way you'd send a password — and it isn't shown again.")
                         )
                         .font(.callout)
                     }
@@ -243,13 +239,16 @@ struct InviteSheet: View {
     }
 
     private func expiryFooter(_ invite: InviteCreated) -> String {
-        let lifetime = invite.expiryLabel.map { "Single use, expires \($0)." } ?? "Single use."
-        return lifetime + " They enter it when creating their account, along with this server's address."
+        let lifetime = invite.expiryLabel.map {
+            String(localized: "Single use, expires \($0).")
+        } ?? String(localized: "Single use.")
+        return lifetime + String(localized: " They enter it when creating their account, along with this server's address.")
     }
 
     private func shareText(_ code: String) -> String {
-        "Join my Meals household. Install Meals, set the server to \(session.serverURL), "
-            + "create an account and enter this invite code: \(code)"
+        String(
+            localized: "Join my Meals household. Install Meals, set the server to \(session.serverURL), create an account and enter this invite code: \(code)"
+        )
     }
 
     private func mint() async {
