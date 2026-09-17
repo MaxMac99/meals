@@ -320,7 +320,7 @@ struct RecipeDetailView: View {
 
             if let instructions = recipe.instructions, !instructions.isEmpty {
                 Section("Method") {
-                    Text(instructions)
+                    MarkdownText(markdown: instructions)
                         .font(.callout)
                 }
             }
