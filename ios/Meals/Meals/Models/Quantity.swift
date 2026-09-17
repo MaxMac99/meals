@@ -11,30 +11,68 @@ enum MealsUnits {
     /// then the natural counts people actually shop in.
     static let common = ["g", "kg", "ml", "l", "item", "tin", "pack", "clove", "bunch", "slice", "jar", "bottle"]
 
-    /// Units the API rejects, with the conversion it will quote back. Checked
-    /// as the user types so the correction arrives at the field rather than
-    /// after the whole meal or recipe fails to save. Values are catalog keys —
-    /// the conversions are universal, the one free-text sentence translates.
-    static let rejected: [String: String] = [
-        "tsp": "1 tsp = 5 ml",
-        "teaspoon": "1 tsp = 5 ml",
-        "tbsp": "1 tbsp = 15 ml",
-        "tablespoon": "1 tbsp = 15 ml",
-        "cup": "1 cup = 240 ml",
-        "cups": "1 cup = 240 ml",
-        "oz": "1 oz = 28 g",
-        "ounce": "1 oz = 28 g",
-        "lb": "1 lb = 454 g",
-        "pound": "1 lb = 454 g",
-        "pint": "1 UK pint = 568 ml",
-        "stick": "sticks aren't metric — use g or ml",
+    /// Units the API rejects (decision Q2), with the conversion it would
+    /// quote back. Checked as the user types so the correction arrives at
+    /// the field rather than after the whole meal or recipe fails to save —
+    /// the app never converts anything, it only refuses what the server
+    /// would refuse. The conversion is a real Measurement, and Foundation
+    /// renders it in the device's language ("1 tsp = 5 ml" at home, "1 TL
+    /// = 5 ml" in German); the one entry that isn't a quantity is a catalog
+    /// sentence.
+    static let rejected: [String: UnitRejection] = [
+        "tsp": .volume(1, .teaspoons, 5, .milliliters),
+        "teaspoon": .volume(1, .teaspoons, 5, .milliliters),
+        "tbsp": .volume(1, .tablespoons, 15, .milliliters),
+        "tablespoon": .volume(1, .tablespoons, 15, .milliliters),
+        "cup": .volume(1, .cups, 240, .milliliters),
+        "cups": .volume(1, .cups, 240, .milliliters),
+        "oz": .mass(1, .ounces, 28, .grams),
+        "ounce": .mass(1, .ounces, 28, .grams),
+        "lb": .mass(1, .pounds, 454, .grams),
+        "pound": .mass(1, .pounds, 454, .grams),
+        "pint": .volume(1, .imperialPints, 568, .milliliters),
+        "stick": .note("sticks aren't metric — use g or ml"),
     ]
 
     /// nil when the unit is fine; otherwise the conversion to show.
-    static func rejection(for unit: String?) -> String? {
+    static func rejection(for unit: String?, locale: Locale = .current) -> String? {
         guard let unit, !unit.isEmpty else { return nil }
-        guard let key = rejected[unit.lowercased().trimmingCharacters(in: .whitespaces)] else { return nil }
-        return String(localized: String.LocalizationValue(key))
+        guard let rejection = rejected[unit.lowercased().trimmingCharacters(in: .whitespaces)] else { return nil }
+        return rejection.text(locale: locale)
+    }
+}
+
+/// Why a unit can't be sent, and how to say so.
+enum UnitRejection: Equatable {
+    /// A volume-to-volume conversion like "1 tsp = 5 ml".
+    case volume(Double, UnitVolume, Double, UnitVolume)
+    /// A mass-to-mass conversion like "1 oz = 28 g".
+    case mass(Double, UnitMass, Double, UnitMass)
+    /// The one entry that isn't a quantity, kept as a catalog sentence.
+    case note(String)
+
+    /// The sentence, with both measurements rendered by Foundation's
+    /// measurement formatting — the units' words are the locale's, not ours
+    /// to translate. Spelled out, because the abbreviations some locales
+    /// pick ("c" for a cup) are cryptic in a correction hint.
+    func text(locale: Locale) -> String {
+        switch self {
+        case let .volume(fromValue, fromUnit, toValue, toUnit):
+            return Self.rendered(fromValue, fromUnit, toValue, toUnit, locale: locale)
+        case let .mass(fromValue, fromUnit, toValue, toUnit):
+            return Self.rendered(fromValue, fromUnit, toValue, toUnit, locale: locale)
+        case let .note(key):
+            return String(localized: String.LocalizationValue(key))
+        }
+    }
+
+    private static func rendered<UnitType: Dimension>(
+        _ fromValue: Double, _ fromUnit: UnitType, _ toValue: Double, _ toUnit: UnitType, locale: Locale
+    ) -> String {
+        let style = Measurement<UnitType>.FormatStyle(width: .wide, usage: .asProvided).locale(locale)
+        let from = Measurement(value: fromValue, unit: fromUnit).formatted(style)
+        let to = Measurement(value: toValue, unit: toUnit).formatted(style)
+        return "\(from) = \(to)"
     }
 }
 
