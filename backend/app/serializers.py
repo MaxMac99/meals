@@ -21,6 +21,7 @@ def ingredient_out(ingredient: Ingredient) -> IngredientOut:
     return IngredientOut(
         id=ingredient.id,
         name=ingredient.name,
+        canonical_name=ingredient.canonical_name,
         aisle=ingredient.aisle,
         aisle_label=aisle_label(ingredient.aisle),
         is_staple=ingredient.is_staple,

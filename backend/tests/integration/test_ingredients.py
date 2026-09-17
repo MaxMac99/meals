@@ -6,7 +6,8 @@ class TestIngredients:
         response = await auth_client.post("/ingredients", json={"name": "Milk"})
         assert response.status_code == 201
         body = response.json()
-        assert body["name"] == "milk"  # canonicalised
+        assert body["name"] == "Milk"  # shown as written
+        assert body["canonical_name"] == "milk"  # the identity key folded
         assert body["aisle"] == "🥛"
         assert body["aisle_label"] == "Dairy"
         assert body["is_staple"] is False
@@ -189,14 +190,31 @@ class TestValueTier:
 
 
 class TestNameFolding:
-    """Names fold to one identity on the way in, whichever client writes them
-    (decision Q21)."""
+    """The fold is the identity key, never the display (decision Q21): writes
+    resolve to one row whichever spelling arrives, and the row keeps the
+    spelling its household wrote."""
 
     async def test_variants_resolve_to_one_ingredient(self, auth_client):
         first = await auth_client.post("/ingredients", json={"name": "garlic cloves"})
         second = await auth_client.post("/ingredients", json={"name": "Fresh Garlic"})
-        assert first.json()["name"] == "garlic"
+        assert first.json()["name"] == "garlic cloves"
+        assert first.json()["canonical_name"] == "garlic"
         assert first.json()["id"] == second.json()["id"]
+
+    async def test_case_alone_never_creates_a_second_row(self, auth_client):
+        """'Käse' and 'käse' are one food — case folds in the key, and the
+        display keeps whichever spelling got there first."""
+        first = await auth_client.post("/ingredients", json={"name": "Käse"})
+        second = await auth_client.post("/ingredients", json={"name": "käse"})
+        assert first.json()["id"] == second.json()["id"]
+        assert second.json()["name"] == "Käse"
+
+    async def test_folding_still_strips_prep_words_from_the_identity(self, auth_client):
+        created = await auth_client.post("/ingredients", json={"name": "Mint leaves"})
+        assert created.json()["canonical_name"] == "mint"
+        # the exact lookup folds what it is sent, whatever the display says
+        found = await auth_client.get("/ingredients", params={"name": "fresh mint"})
+        assert [i["id"] for i in found.json()] == [created.json()["id"]]
 
     async def test_recipe_and_adhoc_paths_agree(self, auth_client):
         """A recipe line and an ad-hoc add of the same food land on one row —
@@ -208,8 +226,8 @@ class TestNameFolding:
             "/shopping-list/items", json={"name": "fresh mint", "quantity": 1, "unit": "bunch"}
         )
         assert response.status_code == 201
-        assert recipe["ingredients"][0]["name"] == "mint"
-        assert response.json()["name"] == "mint"
+        assert recipe["ingredients"][0]["name"] == "mint leaves"
+        assert response.json()["name"] == "mint leaves"
         assert response.json()["ingredient_id"] == recipe["ingredients"][0]["ingredient_id"]
 
     async def test_recipe_line_keeps_what_the_recipe_wrote(self, auth_client):
@@ -220,7 +238,7 @@ class TestNameFolding:
             title="Summer rolls",
             ingredients=[{"name": "mint leaves", "quantity": 10, "unit": "g", "raw": "10g mint leaves, torn"}],
         )
-        assert recipe["ingredients"][0]["name"] == "mint"
+        assert recipe["ingredients"][0]["name"] == "mint leaves"
         assert recipe["ingredients"][0]["raw"] == "10g mint leaves, torn"
 
 

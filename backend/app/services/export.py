@@ -111,6 +111,7 @@ def _ingredient(ingredient: Ingredient) -> dict:
     return {
         "id": ingredient.id,
         "name": ingredient.name,
+        "canonical_name": ingredient.canonical_name,
         "aisle": ingredient.aisle,
         "is_staple": ingredient.is_staple,
         "value_tier": ingredient.value_tier,

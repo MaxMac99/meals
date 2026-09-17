@@ -19,6 +19,9 @@ def _check_value_tier(value: str | None) -> str | None:
 class IngredientOut(BaseModel):
     id: uuid.UUID
     name: str
+    # The folded identity the write path matched this row on (Q21) — the
+    # lowercase key, whatever case `name` is shown in.
+    canonical_name: str | None
     aisle: str
     aisle_label: str
     is_staple: bool

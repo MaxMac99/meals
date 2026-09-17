@@ -27,19 +27,19 @@ class MergeError(ValueError):
 
 
 async def find_duplicate_groups(db: AsyncSession, household_id: uuid.UUID) -> list[list[Ingredient]]:
-    """Groups of two or more ingredients that fold to the same canonical name,
-    keeper first. The keeper is the row already stored under the canonical
-    name if there is one, else the oldest — merging into the oldest keeps the
-    aisle and value tier somebody has most likely already curated."""
+    """Groups of two or more ingredients that share one identity key, keeper
+    first. The keeper is the row already stored under the canonical name if
+    there is one, else the oldest — merging into the oldest keeps the aisle
+    and value tier somebody has most likely already curated."""
     result = await db.execute(
         select(Ingredient).where(Ingredient.household_id == household_id).order_by(Ingredient.created_at)
     )
-    by_canonical: dict[str, list[Ingredient]] = defaultdict(list)
+    by_key: dict[str, list[Ingredient]] = defaultdict(list)
     for ingredient in result.scalars():
-        by_canonical[canonical_ingredient_name(ingredient.name) or ingredient.name].append(ingredient)
+        by_key[identity_key(ingredient)].append(ingredient)
 
     groups = []
-    for canonical, members in by_canonical.items():
+    for canonical, members in by_key.items():
         if len(members) < 2:
             continue
         members.sort(key=lambda i: (i.name != canonical, i.created_at))
@@ -48,20 +48,39 @@ async def find_duplicate_groups(db: AsyncSession, household_id: uuid.UUID) -> li
     return groups
 
 
+def identity_key(ingredient: Ingredient) -> str:
+    """The row's folded identity. Rows written before the key column existed
+    have it null, so their name is folded again here — for every row a write
+    path created, the fold of its own name is what the column already holds."""
+    return ingredient.canonical_name or canonical_ingredient_name(ingredient.name) or ingredient.name
+
+
 async def find_unfolded(db: AsyncSession, household_id: uuid.UUID) -> list[tuple[Ingredient, str]]:
     """Ingredients stored under a name that predates the folding rules and has
     no duplicate to merge with — "garlic cloves" when there is no "garlic".
     Reported as `(ingredient, canonical name)` so a client can offer the
-    rename, which it performs as a merge into the canonical name."""
+    rename, which it performs as a merge into the canonical name.
+
+    Only rows whose identity key was never written qualify: since writes keep
+    the household's own spelling (Q21), a row a write created is reachable by
+    writing exactly what it shows, whatever the case — there is no canonical
+    spelling to tidy it towards any more."""
     result = await db.execute(
         select(Ingredient).where(Ingredient.household_id == household_id).order_by(Ingredient.name)
     )
     ingredients = list(result.scalars())
-    names = {ingredient.name for ingredient in ingredients}
     unfolded = []
     for ingredient in ingredients:
         canonical = canonical_ingredient_name(ingredient.name)
-        if canonical and canonical != ingredient.name and canonical not in names:
+        # A twin is another row sharing this identity — counted per row, not
+        # as a set, because the twin's key can equal this row's own fold.
+        others = {identity_key(other) for other in ingredients if other.id != ingredient.id}
+        if (
+            ingredient.canonical_name is None
+            and canonical
+            and canonical != ingredient.name
+            and canonical not in others
+        ):
             unfolded.append((ingredient, canonical))
     return unfolded
 
